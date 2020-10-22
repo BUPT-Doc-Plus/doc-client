@@ -1,6 +1,15 @@
 <template>
   <div class="full">
     <div v-show="page === 'folder'">
+      <div class="top-bar">
+        <div class="top-title">
+          我的文档
+        </div>
+        <div class="top-btns">
+          <span><i class="el-icon-document-add" @click="newDocument"/></span>
+          <span><i class="el-icon-folder-add" @click="newFolder"/></span>
+        </div>
+      </div>
       <TreeForm
         :folder="trees"
         :select="select"
@@ -35,6 +44,8 @@ export default {
   },
   data() {
     return {
+      showAlongTimeout: null,
+      itemToShowTimeout: null,
       selected: {
         doc: null,
         facade: null,
@@ -42,8 +53,9 @@ export default {
       drag: {
         item: null,
         folder: null,
+        showAlong: false,
       },
-      trees:trees
+      trees: trees
     }
   },
   methods: {
@@ -59,13 +71,20 @@ export default {
       this.drag.item = item;
       this.drag.folder = folder;
       this.$emit('fileDragged', this.drag, this.trees);
+      this.showAlongTimeout = setTimeout(() => {
+        this.drag.showAlong = true;
+      }, 250)
     },
     readyToDrop(item) {
       if (this.drag.item) {
-        item.show = true;
+        this.itemToShowTimeouts = setTimeout(() => {
+          item.show = true;
+        }, 500)
       }
     },
-    unreadyToDrop(item) {},
+    unreadyToDrop(item) {
+      clearTimeout(this.itemToShowTimeouts);
+    },
     dropping(item) {
       if (item === "root") {
         if (this.drag.item) {
@@ -78,6 +97,8 @@ export default {
       }
       this.drag.item = null;
       this.trees = this.sortTree(this.trees);
+      clearTimeout(this.showAlongTimeout);
+      this.drag.showAlong = false;
       this.$emit('fileDropped', this.drag, this.trees);
     },
     sortTree(root) {
@@ -87,5 +108,31 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+.top-bar {
+  margin-top: 15px;
+  display: flex;
+}
+.top-bar span {
+  display: inline-block;
+  margin: 0 5px;
+}
+.top-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  font-family: 'Consolas';
+  color: #666;
+}
+.top-btns {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+i:hover {
+  cursor: pointer;
+  color:#aaa;
+}
 </style>

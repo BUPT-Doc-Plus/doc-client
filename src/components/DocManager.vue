@@ -24,6 +24,7 @@
             >
               <el-row class="full">
                 <el-col :style="`width: ${aside.width - 5}px`">
+                  <DragAlong v-if="drag.showAlong" :name="drag.item.label" :x="mouse.x" :y="mouse.y" />
                   <Aside
                     :page="asidePage"
                     @fileSelected="onFileSelected"
@@ -53,25 +54,35 @@ import TreeForm from "./TreeForm";
 import Editor from "./Editor";
 import ToolBar from "./ToolBar";
 import Aside from "./Aside";
+import DragAlong from "./DragAlong";
 import sortTree from "../util/sort";
 
 export default {
   name: "DocManager",
-  components: { TreeForm, Editor, ToolBar, Aside },
+  components: { TreeForm, Editor, ToolBar, Aside, DragAlong },
   created() {
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
+    window.onmousemove = ((e) => {
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+    })
   },
   data() {
     return {
       asidePage: undefined,
+      mouse: {
+        x: 0,
+        y: 0
+      },
       userInfo: {
         name: "测试用户"
       },
       trees: null,
       drag: {
         folder: null,
-        item: null
+        item: null,
+        showAlong: false,
       },
       selected: {
         doc: null,
@@ -123,6 +134,7 @@ export default {
         this.trees.push(this.drag.item);
         this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
       }
+      this.drag.showAlong = false;
       this.drag.item = null;
       sortTree(this.trees);
     }
@@ -170,7 +182,7 @@ export default {
   color: white;
   border-left: 2px solid white;
 }
-.el-icon-circle-close:hover {
+i:hover {
   cursor: pointer;
   color:#aaa;
 }
