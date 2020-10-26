@@ -1,5 +1,5 @@
 <template>
-  <div class="treebox">
+  <div class="treebox" v-if="r">
     <ul :class="layer === 0 ? 'tree' : ' tree-inner'">
       <li
         :class="item === selected ? 'itembox-selected' : 'itembox'"
@@ -7,22 +7,44 @@
         :key="idx"
         @mouseleave="unreadyToDrop(item)"
       >
+        <v-contextmenu
+          class="ctx"
+          ref="contextmenu"
+          @contextmenu="onContextMenu"
+        >
+          <v-contextmenu-item
+            v-for="(op, key) in fileOptions"
+            :key="key"
+            @click="fileOptionCallback(key, context.folder, context.item)"
+            >{{ op }}</v-contextmenu-item
+          >
+        </v-contextmenu>
         <span
-          class="item"
-          @click="select(item)"
+          :class="'item' + (item.cut ? ' item-cut' : '')"
+          v-contextmenu:contextmenu
+          :data="{ folder, item }"
+          @click="select(folder, item)"
           @mousedown="dragging(item, folder)"
           @mouseenter="readyToDrop(item)"
           @mouseup="dropping(item)"
         >
           <span
-            v-if="item.children"
+            v-show="item.children"
             :class="`folder-${item.show ? 1 : 0} folder-state`"
             >&gt;</span
           >
-          <span v-else class="file-0 folder-state`"
-            ><i class="el-icon-notebook-2"
-          /></span>
-          {{ item.label }}
+          <div class="fname">
+            <span v-show="!item.children" class="file-0 folder-state`"
+              ><i class="el-icon-notebook-2"
+            /></span>
+            <span v-show="!item.renaming">{{ item.label }}</span>
+            <span v-show="item.renaming" class="rn-box">
+              <el-input
+                v-model="item.label"
+                @keyup.enter.native="submitRename(item)"
+              ></el-input>
+            </span>
+          </div>
         </span>
         <TreeForm
           v-if="item.show"
@@ -32,8 +54,10 @@
           :dropping="dropping"
           :readyToDrop="readyToDrop"
           :unreadyToDrop="unreadyToDrop"
+          :rightClick="rightClick"
           :layer="layer + 1"
           :selected="selected"
+          :fileOptionCallback="fileOptionCallback"
         />
       </li>
     </ul>
@@ -50,17 +74,46 @@ export default {
     dropping: { required: true },
     readyToDrop: { required: true },
     unreadyToDrop: { required: true },
+    rightClick: { required: true },
     layer: { default: 0 },
+    fileOptionCallback: { required: true },
   },
   name: "TreeForm",
   data() {
-    return {};
+    return {
+      r: true,
+      fileOptions: {
+        cut: "剪切",
+        copy: "复制",
+        paste: "粘贴",
+        delete: "删除",
+        rename: "重命名",
+      },
+      context: {
+        folder: null,
+        item: null,
+      },
+    };
   },
-  methods: {},
+  methods: {
+    onContextMenu(e) {
+      let { item, folder } = e.data.attrs.data;
+      console.log(item, folder);
+      this.context.folder = folder;
+      this.context.item = item;
+    },
+    submitRename(item) {
+      item.renaming = false;
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      })
+    },
+  },
 };
 </script>
 
-<style scoped>
+<style>
 .treebox {
   text-align: left;
   margin: 0;
@@ -83,6 +136,9 @@ export default {
   color: #666;
   font-family: "Consolas";
   background: none;
+}
+.item-cut {
+  color: rgba(102, 102, 102, 0.5);
 }
 .itembox-selected {
   user-select: none;
@@ -108,5 +164,25 @@ export default {
 .folder-1 {
   transform: rotate(90deg);
   transition: 100ms all;
+}
+.ctx {
+  user-select: none;
+}
+.rn-box {
+  display: inline-block;
+}
+.rn-box input {
+  font-family: "Consolas";
+  font-size: 16px;
+}
+.el-input__inner {
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  width: 100%;
+}
+.fname {
+  display: inline-block;
 }
 </style>

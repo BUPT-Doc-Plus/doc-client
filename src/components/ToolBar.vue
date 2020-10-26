@@ -16,7 +16,7 @@ export default {
   name: "ToolBar",
   data() {
     return {
-      menu: ["folder", "search", "delete", "bell", "setting"],
+      menu: ["folder", "share", "search", "delete", "bell", "setting"],
       selected: "folder",
     };
   },

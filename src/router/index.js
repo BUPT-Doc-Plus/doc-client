@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import DocManager from '@/components/DocManager'
+import DocManager from '@/pages/DocManager'
 
 Vue.use(Router)
 

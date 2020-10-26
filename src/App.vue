@@ -11,6 +11,9 @@ export default {
 </script>
 
 <style>
+#app {
+  overflow: hidden;
+}
 h1 {
   font-size: 2em;
 }

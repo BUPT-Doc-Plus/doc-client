@@ -1,4 +1,5 @@
 function sortTree(root) {
+  if (root === null) return;
   root.forEach((item) => {
     if (item.children) {
       sortTree(item.children);
