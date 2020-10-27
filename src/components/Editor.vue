@@ -6,10 +6,10 @@
       :ref="`editor-${doc.id}`"
       :options="editorOption"
     ></quill-editor>
-    <el-row v-show="type === 'markdown'" class="full">
+    <el-row v-show="type !== 'rich-text'" class="full">
       <el-col id="monaco-box" class="full" style="border-right: 0.7px solid #bbb;" :span="12">
         <MonacoEditor
-          language="markdown"
+          :language="type"
           :code="code"
           @mounted="onMonacoMounted"
           @codeChange="onCodeChange"

@@ -1,4 +1,4 @@
-var trees = [
+var folderTree = [
   {
     id: 1,
     label: "软件工程导论",
@@ -124,4 +124,45 @@ var trees = [
   },
 ];
 
-export { trees };
+var shareTree = [
+  {
+    label: '搜索结果',
+    show: true,
+    nonContext: true,
+    children: [
+      {
+        id: 1,
+        label: '苏喆'
+      },
+      {
+        id: 2,
+        label: '沈兆聪'
+      },
+      {
+        id: 3,
+        label: '蔡宇昂'
+      }
+    ]
+  },
+  {
+    label: '当前协作者',
+    show: true,
+    nonContext: true,
+    children: [
+      {
+        id: 4,
+        label: 'sb1'
+      },
+      {
+        id: 5,
+        label: 'sb2'
+      },
+      {
+        id: 6,
+        label: 'sb3'
+      }
+    ]
+  }
+]
+
+export { folderTree, shareTree };

@@ -5,7 +5,7 @@
         :class="item === selected ? 'itembox-selected' : 'itembox'"
         v-for="(item, idx) in folder"
         :key="idx"
-        @mouseleave="unreadyToDrop(item)"
+        @mouseleave="unreadyToDrop ? unreadyToDrop(item) : () => {}"
       >
         <v-contextmenu
           class="ctx"
@@ -13,20 +13,48 @@
           @contextmenu="onContextMenu"
         >
           <v-contextmenu-item
-            v-for="(op, key) in fileOptions"
+            v-for="(op, key) in options"
             :key="key"
             @click="fileOptionCallback(key, context.folder, context.item)"
             >{{ op }}</v-contextmenu-item
           >
         </v-contextmenu>
         <span
-          :class="'item' + (item.cut ? ' item-cut' : '')"
+          v-if="!item.nonContext"
           v-contextmenu:contextmenu
+          :class="'item' + (item.cut ? ' item-cut' : '')"
           :data="{ folder, item }"
           @click="select(folder, item)"
-          @mousedown="dragging(item, folder)"
-          @mouseenter="readyToDrop(item)"
-          @mouseup="dropping(item)"
+          @mousedown="dragging ? dragging(item, folder) : () => {}"
+          @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
+          @mouseup="dropping ? dropping(item) : () => {}"
+        >
+          <span
+            v-show="item.children"
+            :class="`folder-${item.show ? 1 : 0} folder-state`"
+            >&gt;</span
+          >
+          <div class="fname">
+            <span v-show="!item.children" class="file-0 folder-state`"
+              ><i class="el-icon-notebook-2"
+            /></span>
+            <span v-show="!item.renaming">{{ item.label }}</span>
+            <span v-show="item.renaming" class="rn-box">
+              <el-input
+                v-model="item.label"
+                @keyup.enter.native="submitRename(item)"
+              ></el-input>
+            </span>
+          </div>
+        </span>
+        <span
+          v-if="item.nonContext"
+          :class="'item' + (item.cut ? ' item-cut' : '')"
+          :data="{ folder, item }"
+          @click="select(folder, item)"
+          @mousedown="dragging ? dragging(item, folder) : () => {}"
+          @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
+          @mouseup="dropping ? dropping(item) : () => {}"
         >
           <span
             v-show="item.children"
@@ -54,10 +82,10 @@
           :dropping="dropping"
           :readyToDrop="readyToDrop"
           :unreadyToDrop="unreadyToDrop"
-          :rightClick="rightClick"
           :layer="layer + 1"
           :selected="selected"
           :fileOptionCallback="fileOptionCallback"
+          :options="options"
         />
       </li>
     </ul>
@@ -66,29 +94,22 @@
 
 <script>
 export default {
-  props: {
-    folder: { required: true },
-    select: { required: true },
-    selected: { default: null },
-    dragging: { required: true },
-    dropping: { required: true },
-    readyToDrop: { required: true },
-    unreadyToDrop: { required: true },
-    rightClick: { required: true },
-    layer: { default: 0 },
-    fileOptionCallback: { required: true },
-  },
+  props: [
+    "folder",
+    "select",
+    "selected",
+    "dragging",
+    "dropping",
+    "readyToDrop",
+    "unreadyToDrop",
+    "layer",
+    "fileOptionCallback",
+    "options"
+  ],
   name: "TreeForm",
   data() {
     return {
       r: true,
-      fileOptions: {
-        cut: "剪切",
-        copy: "复制",
-        paste: "粘贴",
-        delete: "删除",
-        rename: "重命名",
-      },
       context: {
         folder: null,
         item: null,
@@ -98,7 +119,6 @@ export default {
   methods: {
     onContextMenu(e) {
       let { item, folder } = e.data.attrs.data;
-      console.log(item, folder);
       this.context.folder = folder;
       this.context.item = item;
     },
@@ -175,7 +195,7 @@ export default {
   font-family: "Consolas";
   font-size: 16px;
 }
-.el-input__inner {
+.rn-box .el-input__inner {
   border-radius: 0;
   padding: 0;
   margin: 0;
