@@ -41,15 +41,22 @@
 </template>
 
 <script>
-import { folderTree } from "@/entity/trees";
+import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
 import sortTree from "@/util/sort";
 import hotkeys from 'hotkeys-js';
 
+let conn = Tree.connectDocument(1);
+let doc = conn.get("tree-document", "1");
+
 export default {
   components: { TreeForm },
   created() {
-    this.trees = this.sortTree(this.trees);
+    doc.subscribe((err) => {
+      if (err) throw err;
+      this.fullTree = doc.data;
+      this.trees = this.fullTree.children;
+    })
     document.documentElement.oncontextmenu = (e) => {
       return false;
     };
@@ -96,7 +103,8 @@ export default {
         x: 0,
         y: 0,
       },
-      trees: folderTree,
+      fullTree: null,
+      trees: null,
     };
   },
   methods: {
@@ -176,27 +184,27 @@ export default {
     },
     newDocument(type) {
       if (type === "rich-text") {
-        let item = {
+        let item = new Tree({
           label: "新建富文本",
           type: type,
-        };
+        });
         this._getParent().push(item);
         this._refreshTree();
       } else if (type === "markdown") {
-        let item = {
+        let item = new Tree({
           label: "新建Markdown",
           type: type,
-        };
+        });
         this._getParent().push(item);
         this._refreshTree();
       }
     },
     newFolder() {
-      let folder = {
+      let folder = new Tree({
         label: "新建文件夹",
         show: false,
         children: [],
-      };
+      });
       this._getParent().push(folder);
       this._refreshTree();
     },

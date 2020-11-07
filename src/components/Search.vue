@@ -14,7 +14,7 @@
 </template>
 
 <script>
-import { searchTree } from '@/entity/trees';
+import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
 
 export default {
@@ -22,11 +22,13 @@ export default {
     TreeForm,
   },
   created () {
-
+    this.fullTree = Tree.getSearch(null);
+    this.trees = this.fullTree.children;
   },
   data() {
     return {
-      trees: searchTree,
+      fullTree: null,
+      trees: null,
       search: {
         keywords: ''
       },
@@ -36,7 +38,7 @@ export default {
   methods: {
     select(folder, item) {
       item.show = !item.show;
-      if (!item.chilren) {
+      if (!item.children) {
         this.$emit('resultSelected', folder, item);
       }
       this.selectedDoc = item;

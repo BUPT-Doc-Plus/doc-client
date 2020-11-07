@@ -11,24 +11,28 @@
 </template>
 
 <script>
-import { recycleTree } from "@/entity/trees";
+import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
 
 export default {
   components: {
     TreeForm,
   },
-  created() {},
+  created() {
+    this.fullTree = Tree.getRecycled(null);
+    this.trees = this.fullTree.children;
+  },
   data() {
     return {
-      trees: recycleTree,
+      fullTree: null,
+      trees: null,
       selectedDoc: null
     };
   },
   methods: {
     select(folder, item) {
       item.show = !item.show;
-      if (!item.chilren) {
+      if (!item.children) {
         this.$emit("resultSelected", folder, item);
       }
       this.selectedDoc = item;

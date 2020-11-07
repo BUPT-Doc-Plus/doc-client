@@ -15,6 +15,8 @@
     "file-loader": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.1.11",
     "markdown-it": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^12.0.1",
     "quill": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.3.7",
+    "reconnecting-websocket": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^4.4.0",
+    "sharedb": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.4.2",
     "v-contextmenu": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^2.9.0",
     "vue": "^2.5.2",
     "vue-monaco-editor": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^0.0.19",

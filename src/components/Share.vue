@@ -7,55 +7,62 @@
       icon="el-icon-user"
       :folder="trees"
       :select="select"
-      :options="{invite: '邀请', remove: '移除'}"
+      :options="{ invite: '邀请', remove: '移除' }"
       :fileOptionCallback="optionCallback"
     />
   </div>
 </template>
 
 <script>
-import { shareTree } from '@/entity/trees';
-import TreeForm from '@/components/TreeForm';
+import Tree from "../entity/Tree";
+import TreeForm from "@/components/TreeForm";
 
 export default {
-  props: ['doc'],
+  props: ["doc"],
   components: {
-    TreeForm
+    TreeForm,
   },
-  created () {
+  created() {
     if (this.doc !== null) {
-        this.trees = shareTree;
-        this.trees[1].label = `"${this.doc.label}"的协作者`;
-      } else {
-        this.trees = [shareTree[0], {label: '未选择文档', children: [], show: false}];
-      }
+      this.fullTree = Tree.getShare(null, this.doc.id);
+      this.trees = this.fullTree.children;
+      this.trees[1].label = `"${this.doc.label}"的协作者`;
+    } else {
+      this.fullTree = Tree.getShare(null);
+      this.trees = [
+        this.fullTree.children[0],
+        { label: "未选择文档", children: [], show: false },
+      ];
+    }
   },
   data() {
     return {
-      trees: shareTree,
+      fullTree: null,
+      trees: null,
       search: {
-        keywords: ''
-      }
-    }
+        keywords: "",
+      },
+    };
   },
   methods: {
     select(folder, item) {
       item.show = !item.show;
     },
-    optionCallback(op, folder, item) {
-      
-    }
+    optionCallback(op, folder, item) {},
   },
   watch: {
     doc: function (v) {
       if (v !== null) {
-        this.trees = shareTree;
-        this.trees[1].label = `"${this.doc.label}"的协作者`;
+        this.trees = this.fullTree.children;
+        this.trees[1].label = `"${v.label}"的协作者`;
       } else {
-        this.trees = [shareTree[0], {label: '未选择文档', children: [], show: false}];
+        this.trees = [
+          this.fullTree.children[0],
+          { label: "未选择文档", children: [], show: false },
+        ];
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
