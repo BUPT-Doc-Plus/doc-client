@@ -19,6 +19,7 @@
     </div>
     <TreeForm
       v-if="r"
+      icon="el-icon-notebook-2"
       :folder="trees"
       :select="select"
       :selected="selected.facade"
@@ -29,11 +30,11 @@
       :fileOptionCallback="fileOptionCallback"
       :blurRename="blur"
       :options="{
-        cut: '剪切',
-        copy: '复制',
-        paste: '粘贴',
-        delete: '删除',
-        rename: '重命名',
+        cut: '剪切,Ctrl+X',
+        copy: '复制,Ctrl+C',
+        paste: '粘贴,Ctrl+V',
+        delete: '删除,Del',
+        rename: '重命名,F2',
       }"
     />
   </div>

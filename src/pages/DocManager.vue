@@ -12,14 +12,14 @@
             class="el-icon-circle-close"
             @click="unselectDoc"
           />
-          {{ selected.doc ? selected.doc.label + " - " : "" }}
+          {{ selected.doc ? (selected.type === 'doc' ? selected.doc.label : selected.doc.sender) + " - " : "" }}
           {{ userInfo.name }} - Doc+
         </div>
       </el-header>
       <el-container class="full">
         <el-row class="full" @click="handleClickAside()">
           <el-col class="tool-bar full" style="width: 50px">
-            <ToolBar @menuChange="onMenuChange" />
+            <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
           </el-col>
           <el-col class="full" :span="20">
             <el-aside
@@ -41,6 +41,8 @@
                     @fileSelected="onFileSelected"
                     @fileDragged="onDraggedOrDropped"
                     @fileDropped="onDraggedOrDropped"
+                    @resultSelected="onResultSelected"
+                    @chatSelected="onChatSelected"
                   />
                 </el-col>
               </el-row>
@@ -50,10 +52,14 @@
         <div class="scale full" @mousedown="getStartX"></div>
         <el-main class="main">
           <Editor
-            v-if="selected.doc !== null"
+            v-if="selected.type === 'doc' && selected.doc !== null"
             :doc="selected.doc"
             :type="selected.doc.type"
           />
+          <Chat 
+            v-if="selected.type === 'chat' && selected.doc !== null"
+            :message="selected.doc"
+            />
         </el-main>
       </el-container>
     </el-container>
@@ -62,6 +68,7 @@
 
 <script>
 import Editor from "@/components/Editor";
+import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
@@ -69,7 +76,7 @@ import sortTree from "@/util/sort";
 
 export default {
   name: "DocManager",
-  components: { Editor, ToolBar, Aside, DragAlong },
+  components: { Editor, ToolBar, Aside, DragAlong, Chat },
   created() {
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
@@ -81,6 +88,9 @@ export default {
   data() {
     return {
       asidePage: undefined,
+      toolbar: {
+        menu: ['folder', 'search', 'delete', 'bell', 'setting']
+      },
       mouse: {
         x: 0,
         y: 0,
@@ -95,6 +105,7 @@ export default {
         showAlong: false,
       },
       selected: {
+        type:'doc',
         doc: null,
         facade: null,
       },
@@ -130,10 +141,18 @@ export default {
       this.asidePage = sec;
     },
     unselectDoc() {
+      this.selected.facade = null;
       this.selected.doc = null;
+      if (this.toolbar.menu.indexOf('share') !== -1) {
+        this.toolbar.menu.splice(1, 1);
+      }
     },
     onFileSelected(selected) {
+      this.selected.type = 'doc';
       this.selected = selected;
+      if (this.selected.doc !== null && this.toolbar.menu.indexOf('share') === -1) {
+        this.toolbar.menu.splice(1, 0, 'share');
+      }
     },
     onDraggedOrDropped(drag, trees) {
       this.drag = drag;
@@ -147,6 +166,17 @@ export default {
       this.drag.showAlong = false;
       this.drag.item = null;
       sortTree(this.trees);
+    },
+    onResultSelected(folder, item) {
+      this.selected.doc = this.selected.facade = item;
+      this.selected.type = 'doc';
+      if (this.toolbar.menu.indexOf('share') === -1) {
+        this.toolbar.menu.splice(1, 0, 'share');
+      }
+    },
+    onChatSelected(msg) {
+      this.selected.doc = msg;
+      this.selected.type = 'chat';
     }
   },
 };

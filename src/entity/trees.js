@@ -7,24 +7,24 @@ var folderTree = [
       {
         id: 2,
         label: "需求文档",
-        type: 'rich-text'
+        type: "rich-text"
       },
       {
         id: 3,
         label: "设计文档",
-        type: 'rich-text'
+        type: "rich-text"
       },
       {
         id: 4,
         label: "评审文档",
-        type: 'rich-text'
+        type: "rich-text"
       },
     ],
   },
   {
     id: 5,
     label: "期末总结",
-    type: 'markdown',
+    type: "markdown",
     show: false,
   },
   {
@@ -35,7 +35,7 @@ var folderTree = [
       {
         id: 7,
         label: "OO分析",
-        type: 'rich-text',
+        type: "rich-text",
       },
       {
         id: 8,
@@ -45,17 +45,17 @@ var folderTree = [
           {
             id: 9,
             label: "类图",
-            type: 'rich-text',
+            type: "rich-text",
           },
           {
             id: 10,
             label: "顺序图",
-            type: 'rich-text',
+            type: "rich-text",
           },
           {
             id: 11,
             label: "进程图",
-            type: 'rich-text',
+            type: "rich-text",
           },
         ],
       },
@@ -69,7 +69,7 @@ var folderTree = [
       {
         id: 13,
         label: "二叉树",
-        type: 'rich-text',
+        type: "rich-text",
       },
       {
         id: 14,
@@ -79,7 +79,7 @@ var folderTree = [
           {
             id: 15,
             label: "有向无环图",
-            type: 'rich-text',
+            type: "rich-text",
           },
         ],
       },
@@ -98,7 +98,7 @@ var folderTree = [
           {
             id: 18,
             label: "Java虚拟机概述",
-            type: 'rich-text',
+            type: "rich-text",
           },
           {
             id: 19,
@@ -108,7 +108,7 @@ var folderTree = [
               {
                 id: 20,
                 label: "整型",
-                type: 'rich-text',
+                type: "rich-text",
               },
             ],
           },
@@ -117,7 +117,7 @@ var folderTree = [
       {
         id: 21,
         label: "面向对象",
-        type: 'rich-text',
+        type: "rich-text",
         show: false,
       },
     ],
@@ -126,43 +126,91 @@ var folderTree = [
 
 var shareTree = [
   {
-    label: '搜索结果',
+    label: "搜索结果",
     show: true,
     nonContext: true,
     children: [
       {
         id: 1,
-        label: '苏喆'
+        label: "苏喆",
+        joined: false
       },
       {
         id: 2,
-        label: '沈兆聪'
+        label: "沈兆聪",
+        joined: false
       },
       {
         id: 3,
-        label: '蔡宇昂'
+        label: "蔡宇昂",
+        joined: false
       }
     ]
   },
   {
-    label: '当前协作者',
+    label: "",
     show: true,
     nonContext: true,
     children: [
       {
         id: 4,
-        label: 'sb1'
+        label: "sb1",
+        joined: true
       },
       {
         id: 5,
-        label: 'sb2'
+        label: "sb2",
+        joined: true
       },
       {
         id: 6,
-        label: 'sb3'
+        label: "sb3",
+        joined: true
+      }
+    ]
+  }
+];
+
+var searchTree = [
+  {
+    label: "搜索结果",
+    show: true,
+    nonContext: true,
+    children: [
+      {
+        id: 2,
+        label: "需求文档",
+        type: "rich-text"
+      },
+      {
+        id: 3,
+        label: "设计文档",
+        type: "rich-text"
+      },
+      {
+        id: 4,
+        label: "评审文档",
+        type: "rich-text"
       }
     ]
   }
 ]
 
-export { folderTree, shareTree };
+var recycleTree = [
+  {
+    label: "回收站",
+    show: true,
+    children: [
+      {
+        label: "Hello, world",
+        type: "markdown"
+      },
+      {
+        label: "你好世界",
+        type: "markdown"
+      }
+    ]
+  }
+];
+
+export { folderTree, shareTree, searchTree, recycleTree };

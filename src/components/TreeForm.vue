@@ -15,9 +15,13 @@
           <v-contextmenu-item
             v-for="(op, key) in options"
             :key="key"
-            @click="fileOptionCallback(key, context.folder, context.item)"
-            >{{ op }}</v-contextmenu-item
-          >
+            :disabled="item.joined && key === 'invite' || !item.joined && key === 'remove'"
+            @click="fileOptionCallback(key, context.folder, context.item)">
+            <div class="option">
+              <div class="option-l">{{ op.split(",")[0] }}</div>
+              <div class="option-r">{{ op.split(",")[1] }}</div>
+            </div>
+          </v-contextmenu-item>
         </v-contextmenu>
         <span
           v-if="!item.nonContext"
@@ -36,7 +40,7 @@
           >
           <div class="fname">
             <span v-show="!item.children" class="file-0 folder-state`"
-              ><i class="el-icon-notebook-2"
+              ><i :class="icon"
             /></span>
             <span v-show="!item.renaming">{{ item.label }}</span>
             <span v-show="item.renaming" class="rn-box">
@@ -76,6 +80,7 @@
         </span>
         <TreeForm
           v-if="item.show"
+          :icon="icon"
           :folder="item.children"
           :select="select"
           :dragging="dragging"
@@ -95,6 +100,7 @@
 <script>
 export default {
   props: [
+    "icon",
     "folder",
     "select",
     "selected",
@@ -204,5 +210,20 @@ export default {
 }
 .fname {
   display: inline-block;
+}
+.option {
+  display: flex;
+}
+.option-l {
+  flex: 1;
+  display: flex;
+  padding-right: 20px;
+  justify-content: flex-start;
+}
+.option-r {
+  flex: 1;
+  display: flex;
+  padding-left: 20px;
+  justify-content: flex-end;
 }
 </style>

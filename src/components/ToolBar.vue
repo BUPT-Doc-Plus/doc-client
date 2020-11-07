@@ -14,9 +14,9 @@
 <script>
 export default {
   name: "ToolBar",
+  props: ['menu'],
   data() {
     return {
-      menu: ["folder", "share", "search", "delete", "bell", "setting"],
       selected: "folder",
     };
   },
