@@ -72,7 +72,6 @@ import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
-import sortTree from "@/util/sort";
 
 export default {
   name: "DocManager",
@@ -147,6 +146,9 @@ export default {
         this.toolbar.menu.splice(1, 1);
       }
     },
+    unselectFacade() {
+      this.selected.facade = null;
+    },
     onFileSelected(selected) {
       this.selected.type = 'doc';
       this.selected = selected;
@@ -165,7 +167,7 @@ export default {
       }
       this.drag.showAlong = false;
       this.drag.item = null;
-      sortTree(this.trees);
+      // sortTree(this.trees);
     },
     onResultSelected(folder, item) {
       this.selected.doc = this.selected.facade = item;

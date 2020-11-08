@@ -20,6 +20,7 @@
     <TreeForm
       v-if="r"
       icon="el-icon-notebook-2"
+      :path="['children']"
       :folder="trees"
       :select="select"
       :selected="selected.facade"
@@ -43,8 +44,9 @@
 <script>
 import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
-import sortTree from "@/util/sort";
-import hotkeys from 'hotkeys-js';
+import hotkeys from "hotkeys-js";
+import sortTree from "../util/sort";
+import findBinary from "../util/findBinary";
 
 let conn = Tree.connectDocument(1);
 let doc = conn.get("tree-document", "1");
@@ -56,24 +58,30 @@ export default {
       if (err) throw err;
       this.fullTree = doc.data;
       this.trees = this.fullTree.children;
-    })
+      this._refreshTree();
+    });
     document.documentElement.oncontextmenu = (e) => {
       return false;
     };
-    hotkeys('ctrl+c,ctrl+v,ctrl+x,del,f2', (e) => {
+    hotkeys("ctrl+c,ctrl+v,ctrl+x,del,f2", (e) => {
       let op = null;
-      if (e.key === 'c') {
-        op = 'copy';
-      } else if (e.key === 'x') {
-        op = 'cut';
-      } else if (e.key === 'v') {
-        op = 'paste';
-      } else if (e.key === 'Delete') {
-        op = 'delete';
-      } else if (e.key === 'F2') {
-        op = 'rename';
+      if (e.key === "c") {
+        op = "copy";
+      } else if (e.key === "x") {
+        op = "cut";
+      } else if (e.key === "v") {
+        op = "paste";
+      } else if (e.key === "Delete") {
+        op = "delete";
+      } else if (e.key === "F2") {
+        op = "rename";
       }
-      this.fileOptionCallback(op, this.selected.folder, this.selected.facade);
+      this.fileOptionCallback(
+        op,
+        this.selected.folder,
+        this.selected.facade,
+        this.selected.path
+      );
     });
   },
   data() {
@@ -85,19 +93,22 @@ export default {
         folder: null,
         item: null,
         cut: false,
+        path: [],
       },
       renaming: {
-        item: null  
+        item: null,
       },
       selected: {
         folder: null,
         doc: null,
         facade: null,
+        path: null,
       },
       drag: {
         item: null,
         folder: null,
         showAlong: false,
+        path: null,
       },
       rc: {
         x: 0,
@@ -117,8 +128,26 @@ export default {
         return this.selected.folder;
       }
     },
+    _getParentPath() {
+      if (this.selected.facade === null) {
+        return ["children"];
+      } else if (this.selected.facade.children) {
+        return [
+          ...this.selected.path,
+          this.selected.folder.indexOf(this.selected.facade),
+          "children",
+        ];
+      } else {
+        return this.selected.path;
+      }
+    },
+    _getFolderOfPath(path) {
+      let res = this.fullTree;
+      for (let p of path) res = res[p];
+      return res;
+    },
     _refreshTree() {
-      this.trees = this.sortTree(this.trees);
+      // this.trees = sortTree(this.trees);
       this.r = false;
       this.$nextTick(() => {
         this.r = true;
@@ -130,20 +159,21 @@ export default {
       }
       this.renaming.item = null;
     },
-    select(folder, item) {
+    select(folder, item, path) {
       if (item.renaming) return;
-      console.log(item.label);
       this.selected.folder = folder;
       item.show = !item.show;
       this.selected.facade = item;
       if (item.children === undefined) {
         this.selected.doc = item;
       }
+      this.selected.path = path;
       this.$emit("fileSelected", this.selected);
     },
-    dragging(item, folder) {
+    dragging(item, folder, path) {
       this.drag.item = item;
       this.drag.folder = folder;
+      this.drag.path = path;
       this.$emit("fileDragged", this.drag, this.trees);
       this.showAlongTimeout = setTimeout(() => {
         this.drag.showAlong = true;
@@ -159,44 +189,71 @@ export default {
     unreadyToDrop(item) {
       clearTimeout(this.itemToShowTimeouts);
     },
-    dropping(item) {
+    dropping(item, path) {
       if (item === "root") {
         if (this.drag.item) {
           this.trees.push(this.drag.item);
           this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
         }
       } else if (item.children && this.drag.item && item !== this.drag.item) {
-        item.children.push(this.drag.item);
-        this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
+        doc.submitOp([
+          {
+            p: [
+              ...path,
+              this._getFolderOfPath(path).indexOf(item),
+              "children",
+              findBinary(
+                item.children,
+                this.drag.item,
+                0,
+                item.children.length
+              ),
+            ],
+            li: this.drag.item,
+          },
+          {
+            p: [
+              ...this.drag.path,
+              this.drag.folder.indexOf(this.drag.item)
+            ],
+            ld: this.drag.item
+          }
+        ]);
+        // item.children.push(this.drag.item);
+        // this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
       }
       this.drag.item = null;
-      this.trees = this.sortTree(this.trees);
+      // this.trees = this.sortTree(this.trees);
       this.$emit("fileDropped", this.drag, this.trees);
       clearTimeout(this.showAlongTimeout);
       this.drag.showAlong = false;
-    },
-    sortTree(root) {
-      return sortTree(root);
     },
     rightClick(item) {
       console.log(item.label);
       return true;
     },
     newDocument(type) {
+      let item = null;
       if (type === "rich-text") {
-        let item = new Tree({
+        item = new Tree({
           label: "新建富文本",
           type: type,
         });
-        this._getParent().push(item);
-        this._refreshTree();
       } else if (type === "markdown") {
-        let item = new Tree({
+        item = new Tree({
           label: "新建Markdown",
           type: type,
         });
-        this._getParent().push(item);
+      }
+      if (item !== null) {
+        // this._getParent().push(item);
         this._refreshTree();
+        let path = this._getParentPath();
+        let folderOfPath = this._getFolderOfPath(path);
+        doc.submitOp({
+          p: [...path, findBinary(folderOfPath, item, 0, folderOfPath.length)],
+          li: item,
+        });
       }
     },
     newFolder() {
@@ -208,8 +265,9 @@ export default {
       this._getParent().push(folder);
       this._refreshTree();
     },
-    fileOptionCallback(op, folder, item) {
+    fileOptionCallback(op, folder, item, path) {
       let that = this;
+      let folderOfPath = that._getFolderOfPath(path);
       let fns = {
         cut() {
           if (that.clipboard.item) {
@@ -217,30 +275,68 @@ export default {
           }
           that.clipboard.folder = folder;
           that.clipboard.item = item;
+          that.clipboard.path = path;
           that.clipboard.cut = true;
           item.cut = true;
         },
         copy() {
           that.clipboard.folder = folder;
           that.clipboard.item = item;
+          that.clipboard.path = path;
         },
         paste() {
           if (that.clipboard.cut) {
-            that.clipboard.folder.splice(
-              that.clipboard.folder.indexOf(that.clipboard.item),
-              1
-            );
-            that.clipboard.cut = false;
+            // that.clipboard.folder.splice(
+            //   that.clipboard.folder.indexOf(that.clipboard.item),
+            //   1
+            // );
+            doc.submitOp({
+              p: [
+                ...that.clipboard.path,
+                that.clipboard.folder.indexOf(that.clipboard.item),
+              ],
+              ld: that.clipboard.item,
+            });
             delete that.clipboard.item.cut;
           }
           if (item.children) {
-            item.children.push(that.clipboard.item);
+            // item.children.push(that.clipboard.item);
+            doc.submitOp({
+              p: [
+                ...path,
+                folderOfPath.indexOf(item),
+                "children",
+                findBinary(
+                  item.children,
+                  that.clipboard.item,
+                  0,
+                  item.children.length
+                ),
+              ],
+              li: that.clipboard.item,
+            });
           } else {
-            folder.push(that.clipboard.item);
+            // folder.push(that.clipboard.item);
+            doc.submitOp({
+              p: [
+                ...path,
+                findBinary(
+                  folderOfPath,
+                  that.clipboard.item,
+                  0,
+                  folderOfPath.length
+                ),
+              ],
+              li: that.clipboard.item,
+            });
           }
         },
         delete() {
-          folder.splice(folder.indexOf(item), 1);
+          // folder.splice(folder.indexOf(item), 1);
+          doc.submitOp({
+            p: [...path, folder.indexOf(item)],
+            ld: item,
+          });
         },
         rename() {
           if (that.renaming.item) {
@@ -248,7 +344,7 @@ export default {
           }
           that.renaming.item = item;
           item.renaming = true;
-        }
+        },
       };
       fns[op]();
       this._refreshTree();
@@ -260,7 +356,7 @@ export default {
       }
       let s = this.selected;
       s.folder = s.doc = s.facade = null;
-    }
+    },
   },
 };
 </script>
