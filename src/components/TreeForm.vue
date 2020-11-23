@@ -1,9 +1,9 @@
 <template>
-  <div class="treebox" v-if="r">
+  <div class="treebox" v-if="r && folder">
     <ul :class="layer === 0 ? 'tree' : ' tree-inner'">
       <li
         :class="item === selected ? 'itembox-selected' : 'itembox'"
-        v-for="(item, idx) in folder"
+        v-for="(item, idx) in folder.children"
         :key="idx"
         @mouseleave="unreadyToDrop ? unreadyToDrop(item) : () => {}"
       >
@@ -19,7 +19,7 @@
               (item.joined && key === 'invite') ||
               (!item.joined && key === 'remove')
             "
-            @click="fileOptionCallback(key, context.folder, context.item, context.path)"
+            @click="fileOptionCallback(key, context.item)"
           >
             <div class="option">
               <div class="option-l">{{ op.split(",")[0] }}</div>
@@ -31,11 +31,11 @@
           v-if="!item.nonContext"
           v-contextmenu:contextmenu
           :class="'item' + (item.cut ? ' item-cut' : '')"
-          :data="{ folder, item, path }"
-          @click="select(folder, item, path)"
-          @mousedown="dragging ? dragging(item, folder, path) : () => {}"
+          :data="{ item }"
+          @click="select(item)"
+          @mousedown="dragging ? dragging(item) : () => {}"
           @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
-          @mouseup="dropping ? dropping(item, path) : () => {}"
+          @mouseup="dropping ? dropping(item) : () => {}"
         >
           <span
             v-show="item.children"
@@ -58,11 +58,11 @@
         <span
           v-if="item.nonContext"
           :class="'item' + (item.cut ? ' item-cut' : '')"
-          :data="{ folder, item, path }"
-          @click="select(folder, item, path)"
-          @mousedown="dragging ? dragging(item, folder, path) : () => {}"
+          :data="{ item }"
+          @click="select(item)"
+          @mousedown="dragging ? dragging(item) : () => {}"
           @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
-          @mouseup="dropping ? dropping(item, path) : () => {}"
+          @mouseup="dropping ? dropping(item) : () => {}"
         >
           <span
             v-show="item.children"
@@ -85,14 +85,7 @@
         <TreeForm
           v-if="item.show"
           :icon="icon"
-          :folder="item.children"
-          :path="
-            (() => {
-              let result = [...path];
-              result.push(folder.indexOf(item), 'children');
-              return result;
-            })()
-          "
+          :folder="item"
           :select="select"
           :dragging="dragging"
           :dropping="dropping"
@@ -102,6 +95,7 @@
           :selected="selected"
           :fileOptionCallback="fileOptionCallback"
           :options="options"
+          @renameComplete="renameComplete"
         />
       </li>
     </ul>
@@ -112,7 +106,6 @@
 export default {
   props: [
     "icon",
-    "path",
     "folder",
     "select",
     "selected",
@@ -136,10 +129,8 @@ export default {
   },
   methods: {
     onContextMenu(e) {
-      let { item, folder, path } = e.data.attrs.data;
-      this.context.folder = folder;
+      let { item } = e.data.attrs.data;
       this.context.item = item;
-      this.context.path = path;
     },
     submitRename(item) {
       item.renaming = false;
@@ -147,7 +138,11 @@ export default {
       this.$nextTick(() => {
         this.r = true;
       });
+      this.$emit("renameComplete", item);
     },
+    renameComplete(item) {
+      this.$emit("renameComplete", item);
+    }
   },
 };
 </script>

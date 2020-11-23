@@ -6,45 +6,43 @@ export default class Tree {
         Object.assign(this, object);
         if (object.children) {
             for (let i = 0; i < object.children.length; i++) {
-                object.children.push(new Tree(object.children.shift()));
+                let child = new Tree(object.children.shift());
+                child.parent = object;
+                object.children.push(child);
             }
         }
     }
-    static connectDocument(userId) {
-        if (Tree.session.document[userId] === undefined) {
-            let socket = new ReconnectingWebSocket(Tree.url.document + userId);
-            let connection = new sharedb.Connection(socket);
-            Tree.session.document[userId] = connection;
-        }
-        return Tree.session.document[userId];
-    }
-    static getDocument(userId) {
-        return new Tree({
-            children: [
-                {
+    static connectTree(userId) {
+        return {
+            children: {
+                "算法": {
                     id: 1,
                     label: "算法",
                     creator: 1,
                     collaborators: null,
                     show: false,
-                    children: [
-                        { id: 2, label: "动态规划", type: "rich-text", creator: 1, collaborators: [2, 3] },
-                        { id: 3, label: "二叉树", type: "rich-text", creator: 1, collaborators: [2, 3] },
-                    ]
+                    children: {
+                        "动态规划": { id: 2, label: "动态规划", type: "rich-text", creator: 1, collaborators: [2, 3] },
+                        "二叉树": { id: 3, label: "二叉树", type: "rich-text", creator: 1, collaborators: [2, 3] },
+                    }
                 },
-                {
+                "计算机网络": {
                     id: 4,
                     label: "计算机网络",
                     creator: 1,
                     collaborators: null,
                     show: false,
-                    children: [
-                        { id: 5, label: "TCP协议", type: "rich-text", creator: 1, collaborators: [2, 3] },
-                        { id: 6, label: "HTTP协议", type: "rich-text", creator: 1, collaborators: [2, 3] },
-                    ]
-                },
-            ]
-        });
+                    children: {
+                        "七层协议": {
+                            id: 7, label: "七层协议", creator: 1, collaborators: null, show: false, children: {
+                                "TCP协议": { id: 5, label: "TCP协议", type: "rich-text", creator: 1, collaborators: [2, 3] },
+                                "HTTP协议": { id: 6, label: "HTTP协议", type: "rich-text", creator: 1, collaborators: [2, 3] },
+                            }
+                        }
+                    }
+                }
+            }
+        };
     }
     static getRecycled(userId) {
         return new Tree({
@@ -146,8 +144,6 @@ export default class Tree {
     }
 }
 Tree.url = {
-    document: "ws://localhost:8088/tree/document/"
+    document: "ws://localhost:8088/tree/document/",
 }
-Tree.session = {
-    document: {}
-};
+Tree.session = {};

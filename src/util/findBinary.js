@@ -1,4 +1,6 @@
 var compare = (a, b) => {
+    if (a.label === "$recycledBin") return -1;
+    if (b.label === "$recycledBin") return 1;
     if (a.children === undefined && b.children !== undefined) {
         return 1;
     } else if (a.children !== undefined && b.children === undefined) {
