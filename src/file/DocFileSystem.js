@@ -1,29 +1,38 @@
 const sharedb = require("sharedb/lib/client");
-import ReconnectingWebSocket from "reconnecting-websocket";
+var ReconnectingWebSocket = require("reconnecting-websocket").default;
+if (ReconnectingWebSocket === undefined) {
+    ReconnectingWebSocket = require("reconnecting-websocket");
+}
 const { Path } = require("./Path");
 
 class DocFileSystem {
-    constructor() {
+    constructor(RECONNECT_OPS = null) {
         this.doc = null;
-        this.tree = null;
         this.clipboard = {
             folder: "",
             file: "",
             cut: false
         }
+        this.RECONNECT_OPS = RECONNECT_OPS;
     }
 
     connect(userId, connectedCallback = () => { }, operationCallback = () => { }) {
-        let socket = new ReconnectingWebSocket(DocFileSystem.url.document + userId);
+        let socket;
+        if (this.RECONNECT_OPS === null)
+            socket = new ReconnectingWebSocket(DocFileSystem.url.document + userId);
+        else socket = new ReconnectingWebSocket(
+            DocFileSystem.url.document + userId,
+            undefined,
+            this.RECONNECT_OPS
+        );
         this.connection = new sharedb.Connection(socket);
         this.doc = this.connection.get("tree-document", "" + userId);
         this.doc.subscribe((err) => {
             if (err) throw err;
-            this.tree = this.doc.data;
             this.doc.on("op", (op) => {
-                operationCallback(op, this.doc, this.tree);
+                operationCallback(op, this.doc);
             })
-            connectedCallback(this.doc, this.tree);
+            connectedCallback(this.doc);
         })
     }
 
@@ -34,28 +43,30 @@ class DocFileSystem {
     }
 
     get(path) {
-        return this.tree.indices[path] || this.tree.indices[path + "/"];
+        if (path === "/") return this.doc.data.root;
+        if (path.endsWith("/")) path = path.slice(0, -1);
+        let jpath = new Path(path).jpath;
+        let root = this.doc.data.root;
+        for (let p of jpath) {
+            root = root[p];
+            if (root === undefined)
+                return root;
+        }
+        return root;
     }
 
     touch(path, data) {
-        if (this.get(path + data.label) !== undefined)
+        if (!path.endsWith("/")) path += "/";
+        let p = new Path(path + data.label);
+        if (this.get(p.path) !== undefined)
             return false;
         let parent = this.get(path);
         if (parent === undefined || parent.children === undefined)
             return false;
-        // let newNode = new FileNode(data, path + data.label + "/", (node) => {
-        //     this.tree.indices[node.path] = node;
-        // })
-        // parent.children[data.label] = newNode;
-        let p = new Path(path + data.label);
         data.path = p.path;
         this.doc.submitOp([
             {
                 p: ["root", ...p.jpath],
-                oi: data
-            },
-            {
-                p: ["indices", p.path],
                 oi: data
             }
         ]);
@@ -63,31 +74,24 @@ class DocFileSystem {
     }
 
     mkdir(path) {
+        if (path.endsWith("/")) path = path.slice(0, -1);
         if (this.get(path) !== undefined) return false;
-        let [prevPath, newDir] = DocFileSystem.splitLast(path);
-        if (this.get(prevPath) === undefined) {
-            this.mkdir(prevPath);
+        let p = new Path(path);
+        if (this.get(p.parent.path) === undefined) {
+            this.mkdir(p.parent.path);
         }
-        if (newDir !== "") {
+        if (p.target !== "") {
             let data = {
-                label: newDir,
+                label: p.target,
                 path: path,
                 creator: 1,
                 children: {},
                 collaborators: null,
                 show: false
             };
-            // this.get(prevPath).children[newDir] = new FileNode(data, path, (node) => {
-            //     this.tree.indices[node.path] = node;
-            // });
-            let p = new Path(path.slice(0, -1));
             this.doc.submitOp([
                 {
                     p: ["root", ...p.jpath],
-                    oi: data
-                },
-                {
-                    p: ["indices", path],
                     oi: data
                 }
             ]);
@@ -96,18 +100,14 @@ class DocFileSystem {
     }
 
     remove(path) {
+        if (path.endsWith("/")) path = path.slice(0, -1);
         if (this.get(path) === undefined)
             return false;
-        this.doc.submitOp([
-            {
-                p: ["root", ...new Path(path).jpath],
-                od: this.get(path)
-            },
-            {
-                p: ["indices", path],
-                od: this.get(path)
-            }
-        ])
+        let p = new Path(path);
+        this.doc.submitOp({
+            p: ["root", ...p.jpath],
+            od: this.get(path)
+        });
         return true;
     }
 
@@ -127,6 +127,7 @@ class DocFileSystem {
     }
 
     paste(dest) {
+        if (!dest.endsWith("/")) dest += "/";
         if (this.get(dest) === undefined || this.get(dest).children === undefined)
             return -1;
         let flag = 0;
@@ -135,17 +136,10 @@ class DocFileSystem {
         if (this.get(destFile) !== undefined) {
             flag = 1;
         }
-        // this.get(dest).children[this.clipboard.file] = new FileNode(this.get(src), destFile + "/", (node) => {
-        //     this.tree.indices[node.path] = node;
-        // });
         this.get(src).path = destFile;
         this.doc.submitOp([
             {
                 p: ["root", ...new Path(destFile).jpath],
-                oi: this.get(src)
-            },
-            {
-                p: ["indices", destFile],
                 oi: this.get(src)
             }
         ]);
@@ -161,26 +155,15 @@ class DocFileSystem {
         let newPath = p.parent.path + newName + (p._isDir ? "/" : "");
         if (this.get(newPath) !== undefined)
             return false;
-        this.tree.indices[newPath] = this.get(path);
         this.get(path).label = newName;
         this.get(path).path = newPath;
-        // this.get(p.parent.path)[newName] = this.get(path);
-        // delete this.get(path);
         this.doc.submitOp([
             {
                 p: ["root", ...new Path(newPath).jpath],
                 oi: this.get(path)
             },
             {
-                p: ["indices", newPath],
-                oi: this.get(path)
-            },
-            {
                 p: ["root", ...p.jpath],
-                od: this.get(path)
-            },
-            {
-                p: ["indices", path],
                 od: this.get(path)
             }
         ])

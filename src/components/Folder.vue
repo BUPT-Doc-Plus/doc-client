@@ -57,12 +57,11 @@ export default {
   components: { TreeForm },
   created() {
     dfs.connect(1, () => {
-      this.trees = dfs.tree.root;
+      this.trees = dfs.doc.data.root;
     }, () => {
-      this.trees = dfs.tree.root;
+      this.trees = dfs.doc.data.root;
       this._refreshTree();
     })
-    this.trees = Tree.connectTree(1);
     document.documentElement.oncontextmenu = (e) => {
       return false;
     };
