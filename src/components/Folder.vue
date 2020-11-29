@@ -50,35 +50,42 @@ import hotkeys from "hotkeys-js";
 import sortTree from "../util/sort";
 import findBinary from "../util/findBinary";
 import { DocFileSystem } from "../file/DocFileSystem";
+import { Path } from "../file/Path";
 
 var dfs = new DocFileSystem();
 
 export default {
   components: { TreeForm },
   created() {
-    dfs.connect(1, () => {
-      this.trees = dfs.doc.data.root;
-    }, () => {
-      this.trees = dfs.doc.data.root;
-      this._refreshTree();
-    })
+    dfs.connect(
+      1,
+      () => {
+        this.trees = dfs.doc.data.root;
+      },
+      () => {
+        this.trees = dfs.doc.data.root;
+        this._refreshTree();
+      }
+    );
     document.documentElement.oncontextmenu = (e) => {
       return false;
     };
-    hotkeys("ctrl+c,ctrl+v,ctrl+x,del,f2", (e) => {
-      let op = null;
-      if (e.key === "c") {
-        op = "copy";
-      } else if (e.key === "x") {
-        op = "cut";
-      } else if (e.key === "v") {
-        op = "paste";
-      } else if (e.key === "Delete") {
-        op = "delete";
-      } else if (e.key === "F2") {
-        op = "rename";
+    hotkeys("ctrl+c,ctrl+v,ctrl+x,del,f2", { keyup: true }, (e) => {
+      if (e.type === "keyup") {
+        let op = null;
+        if (e.key === "c") {
+          op = "copy";
+        } else if (e.key === "x") {
+          op = "cut";
+        } else if (e.key === "v") {
+          op = "paste";
+        } else if (e.key === "Delete") {
+          op = "delete";
+        } else if (e.key === "F2") {
+          op = "rename";
+        }
+        this.fileOptionCallback(op, this.selected.item);
       }
-      this.fileOptionCallback(op, this.selected.item);
     });
   },
   data() {
@@ -96,7 +103,7 @@ export default {
         item: null,
       },
       selected: {
-        item: null
+        item: null,
       },
       drag: {
         item: null,
@@ -155,7 +162,6 @@ export default {
           this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
         }
       } else if (item.children && this.drag.item && item !== this.drag.item) {
-       
         // item.children.push(this.drag.item);
         // this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
       }
@@ -166,34 +172,51 @@ export default {
       this.drag.showAlong = false;
     },
     newDocument(type) {
-      
+      let p = new Path(this.selected.item.path);
+      if (this.selected.item.children === undefined) p = p.parent;
+      let label = "新建文档",
+        suffix = 0;
+      while (dfs.get(p.path + label) !== undefined) {
+        label = "新建文档" + "-" + ++suffix;
+      }
+      dfs.touch(p.path, { label, name });
     },
-    newFolder() {
-      
-    },
+    newFolder() {},
     fileOptionCallback(op, item) {
+      let opZhMap = {
+        copy: "复制",
+        cut: "剪切",
+        paste: "粘贴",
+        delete: "删除",
+      };
       let opFnMap = {
-        copy: () => {
-          dfs.copy(item.path);
-        },
-        cut: () => {
-          dfs.cut(item.path);
-        },
-        paste: () => {
-          dfs.paste(item.path);
-        },
-        delete: () => {
-          dfs.remove(item.path);
-        },
+        copy: () => dfs.copy(item.path),
+        cut: () => dfs.cut(item.path),
+        paste: () => dfs.paste(item.path),
+        delete: () => dfs.remove(item.path),
         rename: () => {
           item.renaming = true;
           this._refreshTree();
+          return -2;
         },
+      };
+      let flag = opFnMap[op]();
+      console.log(flag);
+      if (flag === true || flag === 0) {
+        this.$message({
+          message: `${opZhMap[op]}成功`,
+          type: "success",
+        });
+      } else if (flag === false || flag === -1) {
+        this.$message({
+          message: `${opZhMap[op]}失败`,
+          type: "error",
+        });
+      } else if (flag === 1) {
       }
-      opFnMap[op]();
     },
-    renameComplete(item) {
-      dfs.rename(item.path, item.label);
+    renameComplete(item, callback) {
+      callback(dfs.rename(item.path, item.label), new Path(item.path).target);
     },
     blur() {
       if (this.renaming.item) {

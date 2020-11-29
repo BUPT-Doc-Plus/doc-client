@@ -124,7 +124,7 @@ export default {
       context: {
         folder: null,
         item: null,
-      },
+      }
     };
   },
   methods: {
@@ -133,16 +133,25 @@ export default {
       this.context.item = item;
     },
     submitRename(item) {
+      let prevName = item.label;
       item.renaming = false;
       this.r = false;
       this.$nextTick(() => {
         this.r = true;
       });
-      this.$emit("renameComplete", item);
+      this.renameComplete(item);
     },
     renameComplete(item) {
-      this.$emit("renameComplete", item);
-    }
+      this.$emit("renameComplete", item, (success, prevName) => {
+        if (!success) {
+          this.$message({
+            message: `已有名为"${item.label}"的项目存在`,
+            type: "error"
+          });
+          item.label = prevName;
+        }
+      });
+    },
   },
 };
 </script>
