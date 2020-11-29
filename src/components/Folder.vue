@@ -24,7 +24,7 @@
       :folder="trees"
       :recycled="false"
       :select="select"
-      :selected="selected.facade"
+      :selected="selected.item"
       :dragging="dragging"
       :dropping="dropping"
       :readyToDrop="readyToDrop"
@@ -78,12 +78,7 @@ export default {
       } else if (e.key === "F2") {
         op = "rename";
       }
-      this.fileOptionCallback(
-        op,
-        this.selected.folder,
-        this.selected.facade,
-        this.selected.path
-      );
+      this.fileOptionCallback(op, this.selected.item);
     });
   },
   data() {
@@ -101,10 +96,7 @@ export default {
         item: null,
       },
       selected: {
-        folder: null,
-        doc: null,
-        facade: null,
-        path: null,
+        item: null
       },
       drag: {
         item: null,
@@ -120,31 +112,6 @@ export default {
     };
   },
   methods: {
-    _getParent() {
-      if (this.selected.facade === null) {
-        return this.trees;
-      } else if (this.selected.facade.children) {
-        return this.selected.facade.children;
-      } else {
-        return this.selected.folder;
-      }
-    },
-    _getParentPath() {
-      if (this.selected.facade === null) {
-        return ["children"];
-      } else if (this.selected.facade.children) {
-        return [
-          ...this.selected.path,
-          this.selected.folder.indexOf(this.selected.facade),
-          "children",
-        ];
-      } else {
-        return this.selected.path;
-      }
-    },
-    _getRecycledBinPath() {
-      return ["children", 0, "children"];
-    },
     _refreshTree() {
       // this.trees = sortTree(this.trees);
       this.r = false;
@@ -159,13 +126,9 @@ export default {
       this.renaming.item = null;
     },
     select(item) {
-      console.log(item);
       if (item.renaming) return;
       item.show = !item.show;
-      this.selected.facade = item;
-      if (item.children === undefined) {
-        this.selected.doc = item;
-      }
+      this.selected.item = item;
       this.$emit("fileSelected", this.selected);
     },
     dragging(item) {
@@ -237,8 +200,7 @@ export default {
         delete this.renaming.item.renaming;
         this._refreshTree();
       }
-      let s = this.selected;
-      s.folder = s.doc = s.facade = null;
+      this.selected.item = null;
     },
   },
 };

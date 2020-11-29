@@ -6,7 +6,7 @@
       @fileDropped="fileDropped"
       v-show="page === 'folder'"
     />
-    <Share :doc="selected.doc" v-show="page === 'share'" />
+    <Share :doc="selected.item" v-show="page === 'share'" />
     <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
     <Recycle v-show="page === 'delete'" @resultSelected="resultSelected"/>
     <Message v-show="page === 'bell'" @selectChat="chatSelected"/>
@@ -36,9 +36,7 @@ export default {
   data() {
     return {
       selected: {
-        doc: null,
-        folder: null,
-        facade: null
+        item: null
       }
     };
   },

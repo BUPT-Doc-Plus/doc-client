@@ -8,11 +8,11 @@
       <el-header style="height: 30px" class="header">
         <div>
           <i
-            v-if="selected.doc"
+            v-if="selected.item && selected.item.children === undefined"
             class="el-icon-circle-close"
             @click="unselectDoc"
           />
-          {{ selected.doc ? (selected.type === 'doc' ? selected.doc.label : selected.doc.sender) + " - " : "" }}
+          {{ (selected.item && selected.item.children === undefined) ? (selected.type === 'doc' ? selected.item.label : selected.item.sender) + " - " : "" }}
           {{ userInfo.name }} - Doc+
         </div>
       </el-header>
@@ -52,13 +52,13 @@
         <div class="scale full" @mousedown="getStartX"></div>
         <el-main class="main">
           <Editor
-            v-if="selected.type === 'doc' && selected.doc !== null"
-            :doc="selected.doc"
-            :type="selected.doc.type"
+            v-if="selected.item && selected.type === 'doc' && selected.item.children === undefined"
+            :doc="selected.item"
+            :type="selected.item.type"
           />
           <Chat 
-            v-if="selected.type === 'chat' && selected.doc !== null"
-            :message="selected.doc"
+            v-if="selected.item && selected.type === 'chat' && selected.item.children !== undefined"
+            :message="selected.item"
             />
         </el-main>
       </el-container>
@@ -140,19 +140,15 @@ export default {
       this.asidePage = sec;
     },
     unselectDoc() {
-      this.selected.facade = null;
-      this.selected.doc = null;
+      this.selected.item = null;
       if (this.toolbar.menu.indexOf('share') !== -1) {
         this.toolbar.menu.splice(1, 1);
       }
     },
-    unselectFacade() {
-      this.selected.facade = null;
-    },
     onFileSelected(selected) {
       this.selected.type = 'doc';
       this.selected = selected;
-      if (this.selected.doc !== null && this.toolbar.menu.indexOf('share') === -1) {
+      if (this.selected.item && this.selected.item.children === undefined && this.toolbar.menu.indexOf('share') === -1) {
         this.toolbar.menu.splice(1, 0, 'share');
       }
     },
@@ -170,14 +166,14 @@ export default {
       // sortTree(this.trees);
     },
     onResultSelected(folder, item) {
-      this.selected.doc = this.selected.facade = item;
+      this.selected.item = item;
       this.selected.type = 'doc';
       if (this.toolbar.menu.indexOf('share') === -1) {
         this.toolbar.menu.splice(1, 0, 'share');
       }
     },
     onChatSelected(msg) {
-      this.selected.doc = msg;
+      this.selected.item = msg;
       this.selected.type = 'chat';
     }
   },
