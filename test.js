@@ -1,4 +1,5 @@
 const { DocFileSystem } = require("./src/file/DocFileSystem");
+const { RichTextDoc } = require("./src/doc/RichTextDoc");
 const NodeWebSocket = require("ws");
 const { Path } = require("./src/file/Path");
 const assert = require("assert");
@@ -15,5 +16,6 @@ const RECONNECT_OPS = {
 
 var dfs = new DocFileSystem(RECONNECT_OPS);
 dfs.connect(1, () => {});
-
-module.exports = { dfs };
+var rtd = new RichTextDoc(RECONNECT_OPS);
+rtd.connect(1, 1, () => {});
+module.exports = { dfs, rtd };
