@@ -49,7 +49,7 @@ export default {
     rtd.close();
   },
   mounted() {
-    rtd.connect(1, 1, () => {
+    rtd.connect(this.doc.id, 1, () => {
       rtd.doc.subscribe((err) => {
         if (err) throw err;
         var quill = this.$refs["editor"].quill;
