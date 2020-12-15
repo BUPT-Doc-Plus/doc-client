@@ -136,11 +136,14 @@ class DocFileSystem {
         if (this.get(destFile) !== undefined) {
             flag = 1;
         }
-        this.get(src).path = destFile;
         this.doc.submitOp([
             {
                 p: ["root", ...new Path(destFile).jpath],
                 oi: this.get(src)
+            },
+            {
+                p: ["root", ...new Path(destFile).jpath, "path"],
+                oi: destFile
             }
         ]);
         if (this.clipboard.cut) {
