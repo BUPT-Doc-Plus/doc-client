@@ -28,7 +28,7 @@
               @mouseup.native="dropAtRoot"
             >
               <el-row class="full">
-                <el-col>
+                <el-col class="full">
                   <DragAlong
                     v-if="drag.showAlong"
                     :name="drag.item.label"
