@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="full" @click="blur">
     <div class="top-bar">
       <div class="top-title">我的文档</div>
       <div class="top-btns">
@@ -24,7 +24,7 @@
       :folder="trees"
       :recycled="false"
       :select="select"
-      :selected="selected.item"
+      :selected="selected.cursor"
       :dragging="dragging"
       :dropping="dropping"
       :readyToDrop="readyToDrop"
@@ -61,6 +61,7 @@ export default {
       1,
       () => {
         this.trees = dfs.doc.data.root;
+        this.selected.cursor = dfs.doc.data.root;
       },
       () => {
         this.trees = dfs.doc.data.root;
@@ -84,7 +85,7 @@ export default {
         } else if (e.key === "F2") {
           op = "rename";
         }
-        this.fileOptionCallback(op, this.selected.item);
+        this.fileOptionCallback(op, this.selected.cursor);
       }
     });
   },
@@ -103,7 +104,9 @@ export default {
         item: null,
       },
       selected: {
+        cursor: null,
         item: null,
+        lock: false,
       },
       drag: {
         item: null,
@@ -133,9 +136,12 @@ export default {
       this.renaming.item = null;
     },
     select(item) {
+      console.log(item);
+      this.selected.lock = true;
       if (item.renaming) return;
       item.show = !item.show;
-      this.selected.item = item;
+      this.selected.cursor = item;
+      if (item.children === undefined) this.selected.item = item;
       this.$emit("fileSelected", this.selected);
     },
     dragging(item) {
@@ -172,8 +178,8 @@ export default {
       this.drag.showAlong = false;
     },
     newDocument(type) {
-      let p = new Path(this.selected.item.path);
-      if (this.selected.item.children === undefined) p = p.parent;
+      let p = new Path(this.selected.cursor.path);
+      if (this.selected.cursor.children === undefined) p = p.parent;
       let label = "新建文档",
         suffix = 0;
       while (dfs.get(p.path + label) !== undefined) {
@@ -202,7 +208,7 @@ export default {
       };
       let flag = opFnMap[op]();
       console.log(flag);
-      if (flag === true || flag === 0) {
+      if (flag === true || flag === 0 || flag === 1) {
         this.$message({
           message: `${opZhMap[op]}成功`,
           type: "success",
@@ -212,18 +218,21 @@ export default {
           message: `${opZhMap[op]}失败`,
           type: "error",
         });
-      } else if (flag === 1) {
       }
+      this._refreshTree();
     },
     renameComplete(item, callback) {
       callback(dfs.rename(item.path, item.label), new Path(item.path).target);
     },
     blur() {
-      if (this.renaming.item) {
-        delete this.renaming.item.renaming;
-        this._refreshTree();
+      if (this.selected.lock) this.selected.lock = false;
+      else {
+        if (this.renaming.item) {
+          delete this.renaming.item.renaming;
+          this._refreshTree();
+        }
+        this.selected.cursor = dfs.doc.data.root;
       }
-      this.selected.item = null;
     },
   },
 };
