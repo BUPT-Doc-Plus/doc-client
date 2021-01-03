@@ -16,9 +16,9 @@ class RichTextDoc {
   }) {
     let socket;
     if (this.RECONNECT_OPS === null)
-      socket = new ReconnectingWebSocket(RichTextDoc.url.collaborate + `${docId}/${userId}`);
+      socket = new ReconnectingWebSocket(RichTextDoc.url.collaborate(docId, userId));
     else socket = new ReconnectingWebSocket(
-      RichTextDoc.url.collaborate + `${docId}/${userId}`,
+      RichTextDoc.url.collaborate(docId, userId),
       undefined,
       this.RECONNECT_OPS
     );
@@ -35,7 +35,7 @@ class RichTextDoc {
 }
 
 RichTextDoc.url = {
-  collaborate: "ws://localhost:8088/collaborate/"
+  collaborate: (docId, userId) => `ws://localhost:8088/collaborate/${docId}/${userId}?token=V20xV2JGcHRXWGhaZW1zd1RUSldiVTlIVFRST2FrazBUWHBDYVUxNlVUUk5WRlpzVFdwTmVVMXFWVDA9`
 }
 
 module.exports = {RichTextDoc};

@@ -1,5 +1,4 @@
-import ReconnectingWebSocket from 'reconnecting-websocket';
-import sharedb from 'sharedb/lib/client';
+import DocAPI from "../biz/DocAPI";
 
 export default class Tree {
   constructor(object) {
@@ -67,54 +66,44 @@ export default class Tree {
     });
   }
 
-  static getShare(userId, docId) {
-    return new Tree({
-      children: [
-        {
-          label: "搜索结果",
-          show: true,
-          nonContext: true,
-          children: [
-            {
-              id: 1,
-              label: "苏喆",
-              joined: false
-            },
-            {
-              id: 2,
-              label: "沈兆聪",
-              joined: false
-            },
-            {
-              id: 3,
-              label: "蔡宇昂",
-              joined: false
-            }
-          ]
-        },
-        {
-          label: "",
-          show: true,
-          nonContext: true,
-          children: [
-            {
-              id: 4,
-              label: "sb1",
-              joined: true
-            },
-            {
-              id: 5,
-              label: "sb2",
-              joined: true
-            },
-            {
-              id: 6,
-              label: "sb3",
-              joined: true
-            }
-          ]
+  static getShare(doc, searchResultCache) {
+    return DocAPI.getDoc(doc.id).then((resp) => {
+      doc = resp.data.data;
+      let collaborate = [], read = [];
+      let accessible = doc.doc_accessible;
+      for (let acc of accessible) {
+        acc.label = `${acc.author.nickname}<${acc.author.email}>`;
+        for (let prop in acc.author) {
+          acc[prop] = acc.author[prop];
         }
-      ]
+        if (acc.role === 0) {
+          read.push(acc);
+        } else {
+          collaborate.push(acc);
+        }
+      }
+      return new Tree({
+        children: {
+          result: {
+            label: "搜索结果",
+            show: true,
+            nonContext: true,
+            children: searchResultCache ? searchResultCache : []
+          },
+          collaborate: {
+            label: "",
+            show: true,
+            nonContext: true,
+            children: collaborate
+          },
+          read: {
+            label: "",
+            show: true,
+            nonContext: true,
+            children: read
+          }
+        }
+      })
     })
   }
 

@@ -12,6 +12,7 @@
     "unittest": "mocha unittest.js"
   },
   "dependencies": {
+    "axios": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^0.21.0",
     "bufferutil": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^4.0.2",
     "element-ui": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^2.13.2",
     "file-loader": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.1.11",

@@ -1,13 +1,14 @@
 <template>
   <div>
     <div class="search-box">
-      <el-input v-model="search.keywords" placeholder="搜索协作用户"></el-input>
+      <el-input v-model="search.keywords" placeholder="搜索协作用户" @input="onSearchInput"></el-input>
     </div>
     <TreeForm
       icon="el-icon-user"
+      v-if="r"
       :folder="trees"
       :select="select"
-      :options="{ invite: '邀请', remove: '移除' }"
+      :options="{ collaborate: '设为协作者', read: '设为读者', remove: '移除所有权限'}"
       :fileOptionCallback="optionCallback"
     />
   </div>
@@ -16,6 +17,8 @@
 <script>
 import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
+import AuthorAPI from "../biz/AuthorAPI";
+import DocAPI from "../biz/DocAPI";
 
 export default {
   props: ["doc"],
@@ -23,21 +26,11 @@ export default {
     TreeForm,
   },
   created() {
-    if (this.doc !== null) {
-      this.fullTree = Tree.getShare(null, this.doc.id);
-      this.trees = this.fullTree.children;
-      this.trees[1].label = `"${this.doc.label}"的协作者`;
-    } else {
-      this.fullTree = Tree.getShare(null);
-      this.trees = [
-        this.fullTree.children[0],
-        { label: "未选择文档", children: [], show: false },
-      ];
-    }
+    this.init(this.doc);
   },
   data() {
     return {
-      fullTree: null,
+      r: true,
       trees: null,
       search: {
         keywords: "",
@@ -45,22 +38,92 @@ export default {
     };
   },
   methods: {
-    select(folder, item) {
+    _refreshTree() {
+      // this.trees = sortTree(this.trees);
+      this.init();
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      });
+    },
+    init(doc) {
+      if (doc !== null) {
+        Tree.getShare(doc, this.trees ? this.trees.children.result.children : undefined).then((data) => {
+          this.trees = data;
+          this.trees.children.collaborate.label = `"${doc.label}"的协作者`;
+          this.trees.children.read.label = `"${doc.label}"的读者`;
+          this._refreshTree();
+        })
+      }
+    },
+    select(item) {
       item.show = !item.show;
     },
-    optionCallback(op, folder, item) {},
+    optionCallback(op, item) {
+      let opsFn = {
+        collaborate: () => {
+          return DocAPI.invite(this.doc, item, 1).then((resp) => {
+            this.$message({
+              type: "success",
+              message: `成功邀请${item.label}为协作者`
+            })
+          }).catch((err) => {
+            this.$message({
+              type: "error",
+              message: `邀请失败, ${err.response.data.msg}`
+            })
+          })
+        },
+        read: () => {
+          return DocAPI.invite(this.doc, item, 0).then((resp) => {
+            this.$message({
+              type: "success",
+              message: `成功邀请${item.label}为读者`
+            })
+          }).catch((err) => {
+            this.$message({
+              type: "error",
+              message: `邀请失败, ${err.response.data.msg}`
+            })
+          })
+        },
+        remove: () => {
+          return DocAPI.kick(this.doc, item).then((resp) => {
+            this.$message({
+              type: "success",
+              message: `成功移除${item.label}的权限`
+            })
+          }).catch((err) => {
+            this.$message({
+              type: "error",
+              message: `移除失败, ${err.response.data.msg}`
+            })
+          })
+        }
+      }
+      opsFn[op]().then(() => {
+        this.init(this.doc);
+      })
+    },
+    onSearchInput() {
+      if (this.search.keywords) {
+        AuthorAPI.queryAuthors(this.search.keywords).then((resp) => {
+          this.trees.children.result.children = [];
+          for (let author of resp.data.data) {
+            author.label = `${author.nickname}<${author.email}>`;
+            author.search = true;
+            this.trees.children.result.children.push(author);
+          }
+          this._refreshTree();
+        })
+      } else {
+        this.trees.children.result.children = [];
+      }
+    }
   },
   watch: {
     doc: function (v) {
-      if (v !== null) {
-        this.trees = this.fullTree.children;
-        this.trees[1].label = `"${v.label}"的协作者`;
-      } else {
-        this.trees = [
-          this.fullTree.children[0],
-          { label: "未选择文档", children: [], show: false },
-        ];
-      }
+      this.init(v);
     },
   },
 };

@@ -51,6 +51,8 @@ import sortTree from "../util/sort";
 import findBinary from "../util/findBinary";
 import { DocFileSystem } from "../file/DocFileSystem";
 import { Path } from "../file/Path";
+import axios from "axios";
+import DocAPI from "../biz/DocAPI";
 
 var dfs = new DocFileSystem();
 
@@ -185,7 +187,16 @@ export default {
       while (dfs.get(p.path + label) !== undefined) {
         label = "新建文档" + "-" + ++suffix;
       }
-      dfs.touch(p.path, { label, name });
+      DocAPI.createDoc(label, type, 1).then((resp) => {
+        if (resp.data.error === 0) {
+          dfs.touch(p.path, resp.data.data);
+        } else {
+          this.$meesage({
+            type: "error",
+            message: resp.data.data
+          })
+        }
+      })
     },
     newFolder() {},
     fileOptionCallback(op, item) {
@@ -199,7 +210,10 @@ export default {
         copy: () => dfs.copy(item.path),
         cut: () => dfs.cut(item.path),
         paste: () => dfs.paste(item.path),
-        delete: () => dfs.remove(item.path),
+        delete: () => {
+          DocAPI.remove(item);
+          return dfs.remove(item.path)
+        },
         rename: () => {
           item.renaming = true;
           this._refreshTree();
@@ -222,7 +236,9 @@ export default {
       this._refreshTree();
     },
     renameComplete(item, callback) {
-      callback(dfs.rename(item.path, item.label), new Path(item.path).target);
+      DocAPI.rename(item, item.label).then((resp) => {
+        callback(dfs.rename(item.path, item.label), new Path(item.path).target);
+      });
     },
     blur() {
       if (this.selected.lock) this.selected.lock = false;

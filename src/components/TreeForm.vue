@@ -15,13 +15,9 @@
           <v-contextmenu-item
             v-for="(op, key) in options"
             :key="key"
-            :disabled="
-              (item.joined && key === 'invite') ||
-              (!item.joined && key === 'remove')
-            "
             @click="fileOptionCallback(key, context.item)"
           >
-            <div class="option">
+            <div class="option" v-if="m">
               <div class="option-l">{{ op.split(",")[0] }}</div>
               <div class="option-r">{{ op.split(",")[1] }}</div>
             </div>
@@ -121,6 +117,7 @@ export default {
   data() {
     return {
       r: true,
+      m: true,
       context: {
         folder: null,
         item: null,
@@ -128,6 +125,18 @@ export default {
     };
   },
   methods: {
+    _refreshTree() {
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      });
+    },
+    _refreshMenu() {
+      this.m = false;
+      this.$nextTick(() => {
+        this.m = true;
+      });
+    },
     onContextMenu(e) {
       let { item } = e.data.attrs.data;
       this.context.item = item;
@@ -135,10 +144,6 @@ export default {
     submitRename(item) {
       let prevName = item.label;
       item.renaming = false;
-      this.r = false;
-      this.$nextTick(() => {
-        this.r = true;
-      });
       this.renameComplete(item);
     },
     renameComplete(item) {
