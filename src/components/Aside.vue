@@ -45,7 +45,6 @@ export default {
   methods: {
     fileSelected (selected) {
       this.selected = selected;
-      console.log(selected);
       this.$emit('fileSelected', selected);
     },
     fileDragged (drag, trees) {
