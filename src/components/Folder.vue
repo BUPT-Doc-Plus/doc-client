@@ -53,46 +53,54 @@ import { DocFileSystem } from "../file/DocFileSystem";
 import { Path } from "../file/Path";
 import axios from "axios";
 import DocAPI from "../biz/DocAPI";
+import API from "../biz/API";
 
 var dfs = new DocFileSystem();
 
 export default {
   components: { TreeForm },
   created() {
-    dfs.connect(
-      1,
-      () => {
-        this.trees = dfs.doc.data.root;
-        this.selected.cursor = dfs.doc.data.root;
-      },
-      () => {
-        this.trees = dfs.doc.data.root;
-        this._refreshTree();
-      }
-    );
-    document.documentElement.oncontextmenu = (e) => {
-      return false;
-    };
-    hotkeys("ctrl+c,ctrl+v,ctrl+x,del,f2", { keyup: true }, (e) => {
-      if (e.type === "keyup") {
-        let op = null;
-        if (e.key === "c") {
-          op = "copy";
-        } else if (e.key === "x") {
-          op = "cut";
-        } else if (e.key === "v") {
-          op = "paste";
-        } else if (e.key === "Delete") {
-          op = "delete";
-        } else if (e.key === "F2") {
-          op = "rename";
+    API.currentUser().then((resp) => {
+      this.meta.user = resp.data.data;
+
+      dfs.connect(
+        this.meta.user.id,
+        () => {
+          this.trees = dfs.doc.data.root;
+          this.selected.cursor = dfs.doc.data.root;
+        },
+        () => {
+          this.trees = dfs.doc.data.root;
+          this._refreshTree();
         }
-        this.fileOptionCallback(op, this.selected.cursor);
-      }
+      );
+      document.documentElement.oncontextmenu = (e) => {
+        return false;
+      };
+      hotkeys("ctrl+c,ctrl+v,ctrl+x,del,f2", { keyup: true }, (e) => {
+        if (e.type === "keyup") {
+          let op = null;
+          if (e.key === "c") {
+            op = "copy";
+          } else if (e.key === "x") {
+            op = "cut";
+          } else if (e.key === "v") {
+            op = "paste";
+          } else if (e.key === "Delete") {
+            op = "delete";
+          } else if (e.key === "F2") {
+            op = "rename";
+          }
+          this.fileOptionCallback(op, this.selected.cursor);
+        }
+      });
     });
   },
   data() {
     return {
+      meta: {
+        user: null,
+      },
       showAlongTimeout: null,
       itemToShowTimeout: null,
       r: true,
@@ -180,23 +188,25 @@ export default {
       this.drag.showAlong = false;
     },
     newDocument(type) {
-      let p = new Path(this.selected.cursor.path);
+      let p;
+      if (this.selected.cursor) p = new Path(this.selected.cursor.path);
+      else p = new Path("/");
       if (this.selected.cursor.children === undefined) p = p.parent;
       let label = "新建文档",
         suffix = 0;
       while (dfs.get(p.path + label) !== undefined) {
         label = "新建文档" + "-" + ++suffix;
       }
-      DocAPI.createDoc(label, type, 1).then((resp) => {
+      DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
         if (resp.data.error === 0) {
           dfs.touch(p.path, resp.data.data);
         } else {
           this.$meesage({
             type: "error",
-            message: resp.data.data
-          })
+            message: resp.data.data,
+          });
         }
-      })
+      });
     },
     newFolder() {},
     fileOptionCallback(op, item) {
@@ -212,7 +222,7 @@ export default {
         paste: () => dfs.paste(item.path),
         delete: () => {
           DocAPI.remove(item);
-          return dfs.remove(item.path)
+          return dfs.remove(item.path);
         },
         rename: () => {
           item.renaming = true;
@@ -239,6 +249,7 @@ export default {
       DocAPI.rename(item, item.label).then((resp) => {
         callback(dfs.rename(item.path, item.label), new Path(item.path).target);
       });
+      this.$emit("renameComplete", item);
     },
     blur() {
       if (this.selected.lock) this.selected.lock = false;
