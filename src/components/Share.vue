@@ -47,7 +47,7 @@ export default {
       });
     },
     init(doc) {
-      if (doc !== null) {
+      if (doc) {
         Tree.getShare(doc, this.trees ? this.trees.children.result.children : undefined).then((data) => {
           this.trees = data;
           this.trees.children.collaborate.label = `"${doc.label}"的协作者`;
