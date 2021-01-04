@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import DocManager from '@/pages/DocManager'
+import Login from '@/pages/Login'
 
 Vue.use(Router)
 
@@ -10,6 +11,11 @@ export default new Router({
       path: '/',
       name: 'DocManager',
       component: DocManager
+    },
+    {
+      path: '/login/',
+      name: 'Login',
+      component: Login
     }
   ]
 })
