@@ -1,9 +1,7 @@
 <template>
   <div>
     <div class="btns">
-      <p>
-        <h3>{{greeting}}, {{user.nickname}}！</h3>
-      </p>
+      <h3>{{greeting}}, {{user.nickname}}！</h3>
       <el-button type="danger" @click.native="logout()">退出登录</el-button>
       <p class="info">&lt;{{user.email}}&gt;</p>
     </div>
