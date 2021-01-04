@@ -36,6 +36,7 @@ import { RichTextDoc } from "../doc/RichTextDoc";
 import "quill/dist/quill.core.css";
 import "quill/dist/quill.snow.css";
 import "quill/dist/quill.bubble.css";
+import API from '../biz/API';
 
 var rtd = new RichTextDoc();
 
@@ -49,24 +50,7 @@ export default {
     rtd.close();
   },
   mounted() {
-    rtd.connect(this.doc.id, 1, () => {
-      rtd.doc.subscribe((err) => {
-        if (err) throw err;
-        var quill = this.$refs["editor"].quill;
-        quill.setContents(rtd.doc.data);
-        quill.on("text-change", (delta, oldDelta, source) => {
-          if (source !== "user") return;
-          rtd.doc.submitOp(delta, { source: quill });
-        });
-        rtd.doc.on("op", (op, source) => {
-          if (source === quill) return;
-          quill.updateContents(op);
-        });
-      });
-    });
-    for (let e of document.getElementsByClassName("ql-snow")) {
-      e.style.border = "none";
-    }
+    this.init();
   },
   data() {
     return {
@@ -82,17 +66,36 @@ export default {
     };
   },
   methods: {
+    init() {
+      rtd.connect(this.doc.id, API.currentUser(), () => {
+        rtd.doc.subscribe((err) => {
+          if (err) throw err;
+          var quill = this.$refs["editor"].quill;
+          quill.setContents(rtd.doc.data);
+          quill.on("text-change", (delta, oldDelta, source) => {
+            if (source !== "user") return;
+            rtd.doc.submitOp(delta, { source: quill });
+          });
+          rtd.doc.on("op", (op, source) => {
+            if (source === quill) return;
+            quill.updateContents(op);
+          });
+        });
+      });
+      for (let e of document.getElementsByClassName("ql-snow")) {
+        e.style.border = "none";
+      }
+    },
     onMonacoMounted(editor) {
       this.monacoEditor = editor;
       this.onCodeChange(editor);
     },
     onCodeChange(editor) {
-      localStorage.setItem(`doc-${this.doc.id}`, this.monacoEditor.getValue());
       document.getElementById("parsedMd").innerHTML = this.md.render(
         this.monacoEditor.getValue()
       );
     },
-  },
+  }
 };
 </script>
 
