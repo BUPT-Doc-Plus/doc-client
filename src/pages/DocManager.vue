@@ -52,12 +52,12 @@
         <div class="scale full" @mousedown="getStartX"></div>
         <el-main class="main">
           <Editor
-            v-if="selected.item && selected.type === 'doc' && selected.item.children === undefined"
+            v-if="r && selected.item && selected.type === 'doc' && selected.item.children === undefined"
             :doc="selected.item"
             :type="selected.item.type"
           />
           <Chat 
-            v-if="selected.item && selected.type === 'chat' && selected.item.children !== undefined"
+            v-if="r && selected.item && selected.type === 'chat' && selected.item.children !== undefined"
             :message="selected.item"
             />
         </el-main>
@@ -72,20 +72,29 @@ import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
+import API from '../biz/API';
 
 export default {
   name: "DocManager",
   components: { Editor, ToolBar, Aside, DragAlong, Chat },
   created() {
+    if (localStorage.getItem("token") === null) {
+      this.$router.push({path: "/login/"})
+      return;
+    }
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
     window.onmousemove = (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
     };
+    API.currentUser().then((resp) => {
+      this.userInfo.name = resp.data.data.nickname;
+    })
   },
   data() {
     return {
+      r: true,
       asidePage: undefined,
       toolbar: {
         menu: ['folder', 'search', 'delete', 'bell', 'setting']
@@ -116,6 +125,12 @@ export default {
     };
   },
   methods: {
+    _refresh() {
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      });
+    },
     getStartX(e) {
       this.aside.startX = e.screenX;
       this.aside.resizeEnabled = true;
@@ -151,6 +166,7 @@ export default {
       if (this.selected.item && this.selected.item.children === undefined && this.toolbar.menu.indexOf('share') === -1) {
         this.toolbar.menu.splice(1, 0, 'share');
       }
+      this._refresh();
     },
     onDraggedOrDropped(drag, trees) {
       this.drag = drag;
