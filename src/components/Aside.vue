@@ -4,13 +4,14 @@
       @fileSelected="fileSelected"
       @fileDragged="fileDragged"
       @fileDropped="fileDropped"
+      @renameComplete="renameComplete"
       v-show="page === 'folder'"
     />
     <Share :doc="selected.item" v-show="page === 'share'" />
     <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
     <Recycle v-show="page === 'delete'" @resultSelected="resultSelected"/>
     <Message v-show="page === 'bell'" @selectChat="chatSelected"/>
-    <div v-show="page === 'setting'">设置</div>
+    <Settings v-show="page === 'setting'"/>
   </div>
 </template>
 
@@ -20,6 +21,7 @@ import Share from "@/components/Share";
 import Search from "@/components/Search";
 import Recycle from "@/components/Recycle";
 import Message from "@/components/Message";
+import Settings from "@/components/Settings";
 
 export default {
   props: {
@@ -27,7 +29,7 @@ export default {
       default: "folder",
     },
   },
-  components: { Folder, Share, Search, Recycle, Message },
+  components: { Folder, Share, Search, Recycle, Message, Settings },
   created() {
     document.documentElement.oncontextmenu = (e) => {
       return false;
@@ -43,6 +45,7 @@ export default {
   methods: {
     fileSelected (selected) {
       this.selected = selected;
+      console.log(selected);
       this.$emit('fileSelected', selected);
     },
     fileDragged (drag, trees) {
@@ -56,6 +59,11 @@ export default {
     },
     chatSelected(msg) {
       this.$emit('chatSelected', msg);
+    },
+    renameComplete(item) {
+      let newItem = {};
+      Object.assign(newItem, item);
+      this.selected.item = newItem;
     }
   },
 };
