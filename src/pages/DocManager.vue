@@ -12,45 +12,47 @@
             class="el-icon-circle-close"
             @click="unselectDoc"
           />
-          {{ (selected.item && selected.item.children === undefined) ? (selected.type === 'doc' ? selected.item.label : selected.item.sender) + " - " : "" }}
+          {{ selected.item ? (selected.item.label + " - ") : "" }}
           {{ userInfo.name }} - Doc+
         </div>
       </el-header>
-      <el-container class="full">
-        <el-row class="full" @click="handleClickAside()">
-          <el-col class="tool-bar full" style="width: 50px">
-            <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
-          </el-col>
-          <el-col class="full" :span="20">
-            <el-aside
-              class="aside"
-              :style="`width: ${aside.width}px;`"
-              @mouseup.native="dropAtRoot"
-            >
-              <el-row class="full">
-                <el-col class="full">
-                  <DragAlong
-                    v-if="drag.showAlong"
-                    :name="drag.item.label"
-                    :x="mouse.x"
-                    :y="mouse.y"
-                  />
-                  <Aside
-                    :page="asidePage"
-                    ref="aside"
-                    @fileSelected="onFileSelected"
-                    @fileDragged="onDraggedOrDropped"
-                    @fileDropped="onDraggedOrDropped"
-                    @resultSelected="onResultSelected"
-                    @chatSelected="onChatSelected"
-                  />
-                </el-col>
-              </el-row>
-            </el-aside>
-          </el-col>
-        </el-row>
-        <div class="scale full" @mousedown="getStartX"></div>
-        <el-main class="main">
+      <el-container class="full" style="display: flex;">
+        <div :style="`flex: 1; display: flex; max-width: ${aside.width + 50}px;`">
+          <el-row class="full" @click="handleClickAside()">
+            <el-col class="tool-bar full" style="width: 50px">
+              <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
+            </el-col>
+            <el-col class="full" :span="20">
+              <el-aside
+                class="aside"
+                :style="`width: ${aside.width}px;`"
+                @mouseup.native="dropAtRoot"
+              >
+                <el-row class="full">
+                  <el-col class="full">
+                    <DragAlong
+                      v-if="drag.showAlong"
+                      :name="drag.item.label"
+                      :x="mouse.x"
+                      :y="mouse.y"
+                    />
+                    <Aside
+                      :page="asidePage"
+                      ref="aside"
+                      @fileSelected="onFileSelected"
+                      @fileDragged="onDraggedOrDropped"
+                      @fileDropped="onDraggedOrDropped"
+                      @resultSelected="onResultSelected"
+                      @chatSelected="onChatSelected"
+                    />
+                  </el-col>
+                </el-row>
+              </el-aside>
+            </el-col>
+          </el-row>
+        </div>
+        <div class="scale full" style="width: 5px;" @mousedown="getStartX"></div>
+        <el-main class="main" style="flex: 1; display: flex;">
           <Editor
             v-if="r && selected.item && selected.type === 'doc' && selected.item.children === undefined"
             :doc="selected.item"
@@ -104,7 +106,7 @@ export default {
         y: 0,
       },
       userInfo: {
-        name: "测试用户",
+        name: "",
       },
       trees: null,
       drag: {
@@ -114,12 +116,11 @@ export default {
       },
       selected: {
         type:'doc',
-        doc: null,
-        facade: null,
+        item: null,
       },
       aside: {
         startX: 0,
-        width: 250,
+        width: 300,
         resizeEnabled: false,
       },
     };
@@ -138,11 +139,11 @@ export default {
     resizeAside(e) {
       if (!this.aside.resizeEnabled || e.screenX === 0) return;
       this.aside.width += e.screenX - this.aside.startX;
-      if (this.aside.width < 250) {
-        this.aside.width = 250;
+      if (this.aside.width < 300) {
+        this.aside.width = 300;
         return;
-      } else if (this.aside.width > 750) {
-        this.aside.width = 750;
+      } else if (this.aside.width > 700) {
+        this.aside.width = 700;
         return;
       }
       this.aside.startX = e.screenX;
@@ -161,8 +162,8 @@ export default {
       }
     },
     onFileSelected(selected) {
-      this.selected.type = 'doc';
       this.selected = selected;
+      this.selected.type = 'doc';
       if (this.selected.item && this.selected.item.children === undefined && this.toolbar.menu.indexOf('share') === -1) {
         this.toolbar.menu.splice(1, 0, 'share');
       }
