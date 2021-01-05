@@ -26,7 +26,10 @@ export default {
   },
   data() {
     return {
-      user: null,
+      user: {
+        nickname: "",
+        email: "",
+      },
       greeting: "",
     };
   },

@@ -1,5 +1,7 @@
 const sharedb = require("sharedb/lib/client");
 const richText = require("rich-text");
+const API = require("../biz/API").default;
+const config = require("../biz/config").default;
 sharedb.types.register(richText.type);
 var ReconnectingWebSocket = require("reconnecting-websocket").default;
 if (ReconnectingWebSocket === undefined) {
@@ -35,7 +37,7 @@ class RichTextDoc {
 }
 
 RichTextDoc.url = {
-  collaborate: (docId, userId) => `ws://localhost:8088/collaborate/${docId}/${userId}?token=V20xV2JGcHRXWGhaZW1zd1RUSldiVTlIVFRST2FrazBUWHBDYVUxNlVUUk5WRlpzVFdwTmVVMXFWVDA9`
+  collaborate: (docId, userId) => `ws://${config.midHost}/collaborate/${docId}/${userId}?token=${API.token()}`
 }
 
 module.exports = {RichTextDoc};
