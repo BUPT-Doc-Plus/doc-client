@@ -1,5 +1,11 @@
 <template>
-  <div class="full" @click="blur">
+  <div
+    class="full"
+    @click="blur"
+    v-loading="loadingFileTree"
+    element-loading-text="正在连接"
+    element-loading-background="rgba(0, 0, 0, 0)"
+  >
     <div class="top-bar">
       <div class="top-title">我的文档</div>
       <div class="top-btns">
@@ -62,16 +68,19 @@ export default {
   created() {
     API.currentUser().then((resp) => {
       this.meta.user = resp.data.data;
-
       dfs.connect(
         this.meta.user.id,
         () => {
           this.trees = dfs.doc.data.root;
           this.selected.cursor = dfs.doc.data.root;
+          this.loadingFileTree = false;
         },
         () => {
           this.trees = dfs.doc.data.root;
           this._refreshTree();
+        },
+        () => {
+          this.loadingFileTree = true;
         }
       );
       document.documentElement.oncontextmenu = (e) => {
@@ -129,6 +138,7 @@ export default {
         y: 0,
       },
       trees: null,
+      loadingFileTree: true,
     };
   },
   methods: {
@@ -146,7 +156,6 @@ export default {
       this.renaming.item = null;
     },
     select(item) {
-      console.log(item);
       this.selected.lock = true;
       if (item.renaming) return;
       item.show = !item.show;
@@ -192,8 +201,7 @@ export default {
       if (this.selected.cursor) p = new Path(this.selected.cursor.path);
       else p = new Path("/");
       if (this.selected.cursor.children === undefined) p = p.parent;
-      let label = "新建文档",
-        suffix = 0;
+      let label = "新建文档", suffix = 0;
       while (dfs.get(p.path + label) !== undefined) {
         label = "新建文档" + "-" + ++suffix;
       }
@@ -208,8 +216,18 @@ export default {
         }
       });
     },
-    newFolder() {},
-    fileOptionCallback(op, item) {
+    newFolder() {
+      let p;
+      if (this.selected.cursor) p = new Path(this.selected.cursor.path);
+      else p = new Path("/");
+      if (this.selected.cursor.children === undefined) p = p.parent;
+      let label = "新建文件夹", suffix = 0;
+      while (dfs.get(p.path + label) !== undefined) {
+        label = "新建文件夹" + "-" + ++suffix;
+      }
+      dfs.mkdir(p.path + label);
+    },
+    fileOptionCallback(op, item, suppressPrompt = false) {
       let opZhMap = {
         copy: "复制",
         cut: "剪切",
@@ -221,7 +239,14 @@ export default {
         cut: () => dfs.cut(item.path),
         paste: () => dfs.paste(item.path),
         delete: () => {
-          DocAPI.remove(item);
+          // 递归删除
+          if (item.children === undefined) {
+            DocAPI.remove(item, this.meta.user.id);
+          } else {
+            for (let key in item.children) {
+              this.fileOptionCallback("delete", item.children[key], true);
+            }
+          }
           return dfs.remove(item.path);
         },
         rename: () => {
@@ -231,24 +256,29 @@ export default {
         },
       };
       let flag = opFnMap[op]();
-      console.log(flag);
-      if (flag === true || flag === 0 || flag === 1) {
-        this.$message({
-          message: `${opZhMap[op]}成功`,
-          type: "success",
-        });
-      } else if (flag === false || flag === -1) {
-        this.$message({
-          message: `${opZhMap[op]}失败`,
-          type: "error",
-        });
+      if (!suppressPrompt) {
+        if (flag === true || flag === 0 || flag === 1) {
+          this.$message({
+            message: `${opZhMap[op]}成功`,
+            type: "success",
+          });
+        } else if (flag === false || flag === -1) {
+          this.$message({
+            message: `${opZhMap[op]}失败`,
+            type: "error",
+          });
+        }
       }
       this._refreshTree();
     },
     renameComplete(item, callback) {
-      DocAPI.rename(item, item.label).then((resp) => {
+      if (item.children === undefined) {
+        DocAPI.rename(item, item.label).then((resp) => {
+          callback(dfs.rename(item.path, item.label), new Path(item.path).target);
+        });
+      } else {
         callback(dfs.rename(item.path, item.label), new Path(item.path).target);
-      });
+      }
       this.$emit("renameComplete", item);
     },
     blur() {
