@@ -1,4 +1,7 @@
 const sharedb = require("sharedb/lib/client");
+const API = require("../biz/API").default;
+const config = require("../biz/config").default;
+
 var ReconnectingWebSocket = require("reconnecting-websocket").default;
 if (ReconnectingWebSocket === undefined) {
   ReconnectingWebSocket = require("reconnecting-websocket");
@@ -18,7 +21,7 @@ class DocFileSystem {
 
   connect(userId, connectedCallback = () => {
   }, operationCallback = () => {
-  }) {
+  }, disconnectCallback = () => {}) {
     let socket;
     if (this.RECONNECT_OPS === null)
       socket = new ReconnectingWebSocket(DocFileSystem.url.document(userId));
@@ -27,6 +30,7 @@ class DocFileSystem {
       undefined,
       this.RECONNECT_OPS
     );
+    socket.onclose = disconnectCallback;
     this.connection = new sharedb.Connection(socket);
     this.doc = this.connection.get("tree-document", "" + userId);
     this.doc.subscribe((err) => {
@@ -59,7 +63,7 @@ class DocFileSystem {
 
   touch(path, data) {
     if (!path.endsWith("/")) path += "/";
-    let p = new Path(path + data.label);
+    let p = new Path(path + data.label + "-" + data.id);
     if (this.get(p.path) !== undefined)
       return false;
     let parent = this.get(path);
@@ -177,7 +181,7 @@ class DocFileSystem {
 }
 
 DocFileSystem.url = {
-  document: (userId) => `ws://localhost:8088/tree/document/${userId}?token=V20xV2JGcHRXWGhaZW1zd1RUSldiVTlIVFRST2FrazBUWHBDYVUxNlVUUk5WRlpzVFdwTmVVMXFWVDA9`
+  document: (userId) => `ws://${config.midHost}/tree/document/${userId}?token=${API.token()}`
 };
 DocFileSystem.splitLast = function (path) {
   path = path.split("").reduce((a, b) => (a.slice(-1) === "/" && b === "/") ? a : (a + b));
