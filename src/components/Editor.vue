@@ -1,16 +1,16 @@
 <template>
-  <div class="full" style="overflow: hidden">
+  <div class="full" style="width: 100%; overflow: hidden">
     <quill-editor
       v-show="type === 'rich-text'"
       v-model="content"
       ref="editor"
       :options="editorOption"
     ></quill-editor>
-    <el-row v-show="type !== 'rich-text'" class="full">
-      <el-col
+    <div v-show="type !== 'rich-text'" class="full" style="display: flex;">
+      <div
         id="monaco-box"
         class="full"
-        style="border-right: 0.7px solid #bbb"
+        style="border-right: 0.7px solid #bbb; display: flex; flex: 1;"
         :span="12"
       >
         <MonacoEditor
@@ -19,12 +19,13 @@
           @mounted="onMonacoMounted"
           @codeChange="onCodeChange"
           theme="vs"
+          style="display: flex; flex: 1"
         />
-      </el-col>
-      <el-col class="full" :span="12">
+      </div>
+      <div class="full" :span="12" style="display: flex; flex: 1">
         <div id="parsedMd" style="padding: 0 5%"></div>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
