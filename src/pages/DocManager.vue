@@ -12,12 +12,18 @@
             class="el-icon-circle-close"
             @click="unselectDoc"
           />
-          {{ selected.item ? (selected.item.label + " - ") : "" }}
+          {{
+            selected.item
+              ? selected.item.label + ` (${top.indicator}) ` + " - "
+              : ""
+          }}
           {{ userInfo.name }} - Doc+
         </div>
       </el-header>
-      <el-container class="full" style="display: flex;">
-        <div :style="`flex: 1; display: flex; max-width: ${aside.width + 50}px;`">
+      <el-container class="full" style="display: flex">
+        <div
+          :style="`flex: 1; display: flex; max-width: ${aside.width + 50}px;`"
+        >
           <el-row class="full" @click="handleClickAside()">
             <el-col class="tool-bar full" style="width: 50px">
               <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
@@ -44,6 +50,7 @@
                       @fileDropped="onDraggedOrDropped"
                       @resultSelected="onResultSelected"
                       @chatSelected="onChatSelected"
+                      @renameComplete="renameComplete"
                     />
                   </el-col>
                 </el-row>
@@ -51,17 +58,27 @@
             </el-col>
           </el-row>
         </div>
-        <div class="scale full" style="width: 5px;" @mousedown="getStartX"></div>
-        <el-main class="main" style="flex: 1; display: flex;">
+        <div class="scale full" style="width: 5px" @mousedown="getStartX"></div>
+        <el-main class="main" style="flex: 1; display: flex">
           <Editor
-            v-if="r && selected.item && selected.type === 'doc' && selected.item.children === undefined"
+            v-if="
+              r &&
+              selected.item &&
+              selected.type === 'doc' &&
+              selected.item.children === undefined
+            "
             :doc="selected.item"
             :type="selected.item.type"
           />
-          <Chat 
-            v-if="r && selected.item && selected.type === 'chat' && selected.item.children !== undefined"
+          <Chat
+            v-if="
+              r &&
+              selected.item &&
+              selected.type === 'chat' &&
+              selected.item.children !== undefined
+            "
             :message="selected.item"
-            />
+          />
         </el-main>
       </el-container>
     </el-container>
@@ -74,32 +91,40 @@ import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
-import API from '../biz/API';
+import API from "../biz/API";
+import config from "../biz/config";
 
 export default {
   name: "DocManager",
   components: { Editor, ToolBar, Aside, DragAlong, Chat },
   created() {
     if (localStorage.getItem("token") === null) {
-      this.$router.push({path: "/login/"})
+      this.$router.push({ path: "/login/" });
       return;
     }
+    API.currentUser()
+      .then((resp) => {
+        this.userInfo.name = resp.data.data.nickname;
+      })
+      .catch((err) => {
+        this.$router.push({ path: "/login/" });
+      });
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
     window.onmousemove = (e) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
     };
-    API.currentUser().then((resp) => {
-      this.userInfo.name = resp.data.data.nickname;
-    })
   },
   data() {
     return {
       r: true,
       asidePage: undefined,
+      top: {
+        indicator: "",
+      },
       toolbar: {
-        menu: ['folder', 'search', 'delete', 'bell', 'setting']
+        menu: ["folder", "search", "delete", "bell", "setting"],
       },
       mouse: {
         x: 0,
@@ -115,7 +140,7 @@ export default {
         showAlong: false,
       },
       selected: {
-        type:'doc',
+        type: "doc",
         item: null,
       },
       aside: {
@@ -157,17 +182,28 @@ export default {
     },
     unselectDoc() {
       this.selected.item = null;
-      if (this.toolbar.menu.indexOf('share') !== -1) {
+      if (this.toolbar.menu.indexOf("share") !== -1) {
         this.toolbar.menu.splice(1, 1);
       }
     },
     onFileSelected(selected) {
       this.selected = selected;
-      this.selected.type = 'doc';
-      if (this.selected.item && this.selected.item.children === undefined && this.toolbar.menu.indexOf('share') === -1) {
-        this.toolbar.menu.splice(1, 0, 'share');
+      this.selected.type = "doc";
+      if (this.selected.item && this.selected.cursor.children === undefined) {
+        if (this.toolbar.menu.indexOf("share") === -1) {
+          this.toolbar.menu.splice(1, 0, "share");
+        }
+        let item = this.selected.item;
+        if (item.type === "code") {
+          let names = item.label.split(".");
+          let suffix = names[names.length - 1];
+          if (config.suffix[suffix]) suffix = config.suffix[suffix];
+          this.top.indicator = suffix + "代码";
+        } else {
+          this.top.indicator = item.type + "文档";
+        }
+        this._refresh();
       }
-      this._refresh();
     },
     onDraggedOrDropped(drag, trees) {
       this.drag = drag;
@@ -184,15 +220,18 @@ export default {
     },
     onResultSelected(folder, item) {
       this.selected.item = item;
-      this.selected.type = 'doc';
-      if (this.toolbar.menu.indexOf('share') === -1) {
-        this.toolbar.menu.splice(1, 0, 'share');
+      this.selected.type = "doc";
+      if (this.toolbar.menu.indexOf("share") === -1) {
+        this.toolbar.menu.splice(1, 0, "share");
       }
     },
     onChatSelected(msg) {
       this.selected.item = msg;
-      this.selected.type = 'chat';
-    }
+      this.selected.type = "chat";
+    },
+    renameComplete() {
+      this._refresh();
+    },
   },
 };
 </script>

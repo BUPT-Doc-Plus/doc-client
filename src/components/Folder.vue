@@ -4,7 +4,7 @@
     @click="blur"
     v-loading="loadingFileTree"
     element-loading-text="正在连接"
-    element-loading-background="rgba(0, 0, 0, 0)"
+    element-loading-background="rgba(243, 243, 243, 1)"
   >
     <div class="top-bar">
       <div class="top-title">我的文档</div>
@@ -12,9 +12,9 @@
         <el-dropdown @command="newDocument">
           <span><i class="el-icon-document-add" /></span>
           <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item command="rich-text">富文本</el-dropdown-item>
-            <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
-            <el-dropdown-item command="user-define">自定义</el-dropdown-item>
+            <el-dropdown-item command="rich">富文本</el-dropdown-item>
+            <el-dropdown-item command="md">Markdown</el-dropdown-item>
+            <el-dropdown-item command="code">代码</el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
         <el-dropdown>
@@ -73,11 +73,11 @@ export default {
         () => {
           this.trees = dfs.doc.data.root;
           this.selected.cursor = dfs.doc.data.root;
-          this.loadingFileTree = false;
         },
         () => {
           this.trees = dfs.doc.data.root;
           this._refreshTree();
+          this.loadingFileTree = false;
         },
         () => {
           this.loadingFileTree = true;
@@ -198,13 +198,11 @@ export default {
     },
     newDocument(type) {
       let p;
-      if (this.selected.cursor) p = new Path(this.selected.cursor.path);
-      else p = new Path("/");
-      if (this.selected.cursor.children === undefined) p = p.parent;
-      let label = "新建文档", suffix = 0;
-      while (dfs.get(p.path + label) !== undefined) {
-        label = "新建文档" + "-" + ++suffix;
-      }
+      if (this.selected.cursor) {
+        p = new Path(this.selected.cursor.path);
+        if (this.selected.cursor.children === undefined) p = p.parent;
+      } else p = new Path("/");
+      let label = "新建文档";
       DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
         if (resp.data.error === 0) {
           dfs.touch(p.path, resp.data.data);
@@ -221,7 +219,8 @@ export default {
       if (this.selected.cursor) p = new Path(this.selected.cursor.path);
       else p = new Path("/");
       if (this.selected.cursor.children === undefined) p = p.parent;
-      let label = "新建文件夹", suffix = 0;
+      let label = "新建文件夹",
+        suffix = 0;
       while (dfs.get(p.path + label) !== undefined) {
         label = "新建文件夹" + "-" + ++suffix;
       }
@@ -255,26 +254,53 @@ export default {
           return -2;
         },
       };
-      let flag = opFnMap[op]();
-      if (!suppressPrompt) {
-        if (flag === true || flag === 0 || flag === 1) {
-          this.$message({
-            message: `${opZhMap[op]}成功`,
-            type: "success",
-          });
-        } else if (flag === false || flag === -1) {
-          this.$message({
-            message: `${opZhMap[op]}失败`,
-            type: "error",
-          });
+      if (op === "delete" && !suppressPrompt) {
+        this.$confirm(`确定删除"${item.label}"? 该操作不可逆!`, "危险行为", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        }).then(() => {
+          let flag = opFnMap[op]();
+          if (!suppressPrompt) {
+            if (flag === true || flag === 0 || flag === 1) {
+              this.$message({
+                message: `${opZhMap[op]}成功`,
+                type: "success",
+              });
+            } else if (flag === false || flag === -1) {
+              this.$message({
+                message: `${opZhMap[op]}失败`,
+                type: "error",
+              });
+            }
+          }
+          this._refreshTree();
+        });
+      } else {
+        let flag = opFnMap[op]();
+        if (!suppressPrompt) {
+          if (flag === true || flag === 0 || flag === 1) {
+            this.$message({
+              message: `${opZhMap[op]}成功`,
+              type: "success",
+            });
+          } else if (flag === false || flag === -1) {
+            this.$message({
+              message: `${opZhMap[op]}失败`,
+              type: "error",
+            });
+          }
         }
+        this._refreshTree();
       }
-      this._refreshTree();
     },
     renameComplete(item, callback) {
       if (item.children === undefined) {
         DocAPI.rename(item, item.label).then((resp) => {
-          callback(dfs.rename(item.path, item.label), new Path(item.path).target);
+          callback(
+            dfs.rename(item.path, item.label),
+            new Path(item.path).target
+          );
         });
       } else {
         callback(dfs.rename(item.path, item.label), new Path(item.path).target);

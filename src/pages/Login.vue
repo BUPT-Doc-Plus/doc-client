@@ -7,7 +7,13 @@
           <h1 class="welcome">
             <div>Doc+</div>
             <div class="btns">
-              <i class="el-icon-right btn" @click="next()" />
+              <span
+                v-loading="submittingInfo"
+                element-loading-background="rgba(255, 255, 255, 1)">
+                <i
+                  class="el-icon-right btn"
+                  @click="next()"/>
+              </span>
             </div>
           </h1>
           <el-input
@@ -18,6 +24,7 @@
             v-show="step === 0"
             v-model="input.email"
             placeholder="邮箱"
+            :disabled="submittingInfo"
           ></el-input>
           <el-input
             ref="input-n"
@@ -26,6 +33,7 @@
             v-show="step === 2"
             v-model="input.nickname"
             placeholder="昵称"
+            :disabled="submittingInfo"
           ></el-input>
           <el-input
             ref="input-p"
@@ -33,7 +41,9 @@
             @keyup.enter.native="step === 1 ? next() : $refs['input-a'].focus()"
             v-show="step === 1 || step === 2"
             v-model="input.password"
+            type="password"
             placeholder="密码"
+            :disabled="submittingInfo"
           ></el-input>
           <el-input
             ref="input-a"
@@ -41,7 +51,9 @@
             @keyup.enter.native="next()"
             v-show="step === 2"
             v-model="input.pwdAgain"
+            type="password"
             placeholder="确认密码"
+            :disabled="submittingInfo"
           ></el-input>
           <el-input
             ref="input-v"
@@ -50,6 +62,7 @@
             v-show="step === 3"
             v-model="input.validCode"
             placeholder="验证码"
+            :disabled="submittingInfo"
           ></el-input>
         </el-main>
       </el-container>
@@ -79,7 +92,8 @@ export default {
         "input-p": "",
         "input-a": "",
         "input-v": "",
-      }
+      },
+      submittingInfo: false
     };
   },
   created() {
@@ -95,6 +109,7 @@ export default {
       }, 250);
     },
     next() {
+      this.submittingInfo = true;
       if (this.step === 0) {        
         if (!/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(this.input.email)) {
           this.shakeSomething("input-e")
@@ -102,6 +117,10 @@ export default {
             type: "error",
             message: "请输入正确的邮箱地址",
           });
+          this.$nextTick(() => {
+            this.$refs["input-e"].focus();
+          })
+          this.submittingInfo = false;
           return;
         }
         AuthorAPI.exist(this.input.email)
@@ -125,18 +144,21 @@ export default {
                 this.$refs["input-p"].focus();
               });
             }
+            this.submittingInfo = false;
           })
           .catch((err) => {
             this.$message({
               type: "error",
               message: err.response.data.msg,
             });
+            this.submittingInfo = false;
           });
       } else if (this.step === 1) {
         AuthorAPI.login(this.input.email, this.input.password)
           .then((resp) => {
             localStorage.setItem("token", resp.data.data);
             this.$router.replace({ path: "/" });
+            this.submittingInfo = false;
           })
           .catch((err) => {
             this.shakeSomething("input-p")
@@ -144,6 +166,10 @@ export default {
               type: "error",
               message: err.response.data.msg,
             });
+            this.$nextTick(() => {
+              this.$refs["input-p"].focus();
+            })
+            this.submittingInfo = false;
           });
       } else if (this.step === 2) {
         if (this.input.password !== this.input.pwdAgain) {
@@ -152,6 +178,8 @@ export default {
             type: "error",
             message: "两次密码不一致",
           });
+          this.$refs["input-a"].focus();
+          this.submittingInfo = false;
           return;
         }
         AuthorAPI.register(
@@ -162,18 +190,21 @@ export default {
           .then((resp) => {
             this.token = resp.data.data;
             this.step = 3;
+            this.submittingInfo = false;
           })
           .catch((err) => {
             this.$message({
               type: "error",
               message: err.response.data.msg,
             });
+            this.submittingInfo = false;
           });
       } else if (this.step === 3) {
         AuthorAPI.activate(this.input.validCode, this.token)
           .then((resp) => {
             localStorage.setItem("token", resp.data.data);
             this.$router.replace({ path: "/" });
+            this.submittingInfo = false;
           })
           .catch((err) => {
             this.shakeSomething("input-v")
@@ -181,6 +212,8 @@ export default {
               type: "error",
               message: err.response.data.msg,
             });
+            this.$refs["input-v"].focus();
+            this.submittingInfo = false;
           });
       }
     },

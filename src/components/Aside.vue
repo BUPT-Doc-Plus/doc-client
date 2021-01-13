@@ -63,6 +63,7 @@ export default {
       let newItem = {};
       Object.assign(newItem, item);
       this.selected.item = newItem;
+      this.$emit("renameComplete");
     }
   },
 };

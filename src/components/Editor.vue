@@ -1,28 +1,35 @@
 <template>
-  <div class="full" style="width: 100%; overflow: hidden">
+  <div
+    class="full"
+    style="width: 100%; overflow: hidden"
+    v-loading="loadingEditor"
+    element-loading-text="正在连接"
+    element-loading-background="rgba(255, 255, 255, 1)"
+  >
     <quill-editor
-      v-show="type === 'rich-text'"
+      v-show="type === 'rich'"
       v-model="content"
       ref="editor"
       :options="editorOption"
     ></quill-editor>
-    <div v-show="type !== 'rich-text'" class="full" style="display: flex;">
+    <div v-show="type !== 'rich'" class="full" style="display: flex">
       <div
         id="monaco-box"
         class="full"
-        style="border-right: 0.7px solid #bbb; display: flex; flex: 1;"
+        style="border-right: 0.7px solid #bbb; display: flex; flex: 1"
         :span="12"
       >
         <MonacoEditor
-          :language="type"
+          class="pointEventNone"
+          :language="monacoLanguage"
           :code="code"
+          ref="monaco"
           @mounted="onMonacoMounted"
-          @codeChange="onCodeChange"
           theme="vs"
           style="display: flex; flex: 1"
         />
       </div>
-      <div class="full" :span="12" style="display: flex; flex: 1">
+      <div v-show="type === 'markdown'" class="full" :span="12" style="display: flex; flex: 1">
         <div id="parsedMd" style="padding: 0 5%"></div>
       </div>
     </div>
@@ -30,16 +37,19 @@
 </template>
 
 <script>
+import config from "../biz/config";
 import { quillEditor } from "vue-quill-editor";
 import MonacoEditor from "vue-monaco-editor";
 import MarkdownIt from "markdown-it";
-import { RichTextDoc } from "../doc/RichTextDoc";
+import { DocClient } from "../doc/DocClient";
 import "quill/dist/quill.core.css";
 import "quill/dist/quill.snow.css";
 import "quill/dist/quill.bubble.css";
-import API from '../biz/API';
+import API from "../biz/API";
+const Diff = require("diff");
+import { diff2Ops, cursorOffset } from "../util/diff2ops";
 
-var rtd = new RichTextDoc();
+var dc;
 
 export default {
   props: ["doc", "type"],
@@ -48,10 +58,28 @@ export default {
     MonacoEditor,
   },
   destroyed() {
-    rtd.close();
+    dc.close();
+  },
+  created() {
+    dc = new DocClient("rich-text");
+    this.loadingEditor = true;
+    if (this.type === "code") {
+      let names = this.doc.label.split(".");
+      let suffix = names[names.length - 1];
+      if (config.suffix[suffix]) {
+        suffix = config.suffix[suffix];
+      }
+      this.monacoLanguage = suffix;
+    }
+    API.currentUser().then((resp) => {
+      this.currentUser = resp.data.data.id;
+      this.init();
+    });
   },
   mounted() {
-    this.init();
+    for (let e of document.getElementsByClassName("ql-snow")) {
+      e.style.border = "none";
+    }
   },
   data() {
     return {
@@ -64,39 +92,69 @@ export default {
       content: "",
       editorOption: {},
       monacoEditor: null,
+      loadingEditor: false,
+      currentUser: null,
+      monacoLanguage: "markdown",
     };
   },
   methods: {
     init() {
-      rtd.connect(this.doc.id, API.currentUser(), () => {
-        rtd.doc.subscribe((err) => {
+      dc.connect(this.doc.id, this.currentUser, () => {
+        dc.doc.subscribe((err) => {
           if (err) throw err;
           var quill = this.$refs["editor"].quill;
-          quill.setContents(rtd.doc.data);
+          quill.setContents(dc.doc.data);
+          this.monacoEditor.setValue(quill.getText());
           quill.on("text-change", (delta, oldDelta, source) => {
-            if (source !== "user") return;
-            rtd.doc.submitOp(delta, { source: quill });
+            if (source !== quill) return;
+            dc.doc.submitOp(delta, { source: quill });
           });
-          rtd.doc.on("op", (op, source) => {
+          dc.doc.on("op", (op, source) => {
             if (source === quill) return;
             quill.updateContents(op);
+            this.$refs["monaco"].$off("codeChange");
+            let { lineNumber, column } = this.monacoEditor.getPosition();
+            column += cursorOffset(this.monacoEditor.getValue(), op.ops, {
+              lineNumber,
+              column,
+            });
+            this.monacoEditor.setValue(quill.getText());
+            this.monacoEditor.setPosition({ lineNumber, column });
+            this.$refs["monaco"].$on("codeChange", () => {
+              this.updateRenderedMd();
+              this.$refs["monaco"].$on("codeChange", codeChangeHanlder);
+            });
           });
+          var codeChangeHanlder = () => {
+            let diff = Diff.diffChars(
+              quill.getText(),
+              this.monacoEditor.getValue()
+            );
+            let ops = diff2Ops(diff);
+            quill.updateContents(ops, quill);
+            this.updateRenderedMd();
+          };
+          this.$refs["monaco"].$on("codeChange", codeChangeHanlder);
+          this.loadingEditor = false;
         });
       });
-      for (let e of document.getElementsByClassName("ql-snow")) {
-        e.style.border = "none";
-      }
     },
     onMonacoMounted(editor) {
       this.monacoEditor = editor;
-      this.onCodeChange(editor);
-    },
-    onCodeChange(editor) {
       document.getElementById("parsedMd").innerHTML = this.md.render(
         this.monacoEditor.getValue()
       );
     },
-  }
+    updateRenderedMd() {
+      document.getElementById("parsedMd").innerHTML = this.md.render(
+        this.monacoEditor.getValue()
+      );
+    },
+    trimEndLinebreak(s) {
+      if (s.endsWith("\n")) return s.slice(0, -1);
+      return s;
+    },
+  },
 };
 </script>
 

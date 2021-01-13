@@ -1,15 +1,18 @@
 const sharedb = require("sharedb/lib/client");
 const richText = require("rich-text");
+const otText = require("ot-text");
 const API = require("../biz/API").default;
 const config = require("../biz/config").default;
 sharedb.types.register(richText.type);
+sharedb.types.register(otText.type);
 var ReconnectingWebSocket = require("reconnecting-websocket").default;
 if (ReconnectingWebSocket === undefined) {
   ReconnectingWebSocket = require("reconnecting-websocket");
 }
 
-class RichTextDoc {
-  constructor(RECONNECT_OPS = null) {
+class DocClient {
+  constructor(type, RECONNECT_OPS = null) {
+    this.type = type;
     this.doc = null;
     this.RECONNECT_OPS = RECONNECT_OPS;
   }
@@ -18,9 +21,9 @@ class RichTextDoc {
   }) {
     let socket;
     if (this.RECONNECT_OPS === null)
-      socket = new ReconnectingWebSocket(RichTextDoc.url.collaborate(docId, userId));
+      socket = new ReconnectingWebSocket(DocClient.url(docId, userId, this.type));
     else socket = new ReconnectingWebSocket(
-      RichTextDoc.url.collaborate(docId, userId),
+      DocClient.url(docId, userId, this.type),
       undefined,
       this.RECONNECT_OPS
     );
@@ -36,8 +39,6 @@ class RichTextDoc {
   }
 }
 
-RichTextDoc.url = {
-  collaborate: (docId, userId) => `ws://${config.midHost}/collaborate/${docId}/${userId}?token=${API.token()}`
-}
+DocClient.url = (docId, userId, type) => `ws://${config.midHost}/${type}/${docId}/${userId}?token=${API.token()}`;
 
-module.exports = {RichTextDoc};
+module.exports = {DocClient};
