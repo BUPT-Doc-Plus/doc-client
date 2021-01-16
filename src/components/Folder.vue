@@ -3,12 +3,16 @@
     class="full"
     @click="blur"
     v-loading="loadingFileTree"
-    element-loading-text="正在连接"
+    element-loading-text="正在刷新"
     element-loading-background="rgba(243, 243, 243, 1)"
+    style="overflow: hidden;"
   >
-    <div class="top-bar">
+    <div class="top-bar" style="height: 4%;">
       <div class="top-title">我的文档</div>
       <div class="top-btns">
+        <div class="el-dropdown">
+          <span><i class="el-icon-refresh" @click="connectToDFS" /></span>
+        </div>
         <el-dropdown @command="newDocument">
           <span><i class="el-icon-document-add" /></span>
           <el-dropdown-menu slot="dropdown">
@@ -17,35 +21,36 @@
             <el-dropdown-item command="code">代码</el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
-        <el-dropdown>
+        <div class="el-dropdown">
           <span><i class="el-icon-folder-add" @click="newFolder" /></span>
-          <el-dropdown-menu slot="dropdown"> </el-dropdown-menu>
-        </el-dropdown>
+        </div>
       </div>
     </div>
-    <TreeForm
-      v-if="r"
-      icon="el-icon-notebook-2"
-      :path="['children']"
-      :folder="trees"
-      :recycled="false"
-      :select="select"
-      :selected="selected.cursor"
-      :dragging="dragging"
-      :dropping="dropping"
-      :readyToDrop="readyToDrop"
-      :unreadyToDrop="unreadyToDrop"
-      :fileOptionCallback="fileOptionCallback"
-      :blurRename="blur"
-      :options="{
-        cut: '剪切,Ctrl+X',
-        copy: '复制,Ctrl+C',
-        paste: '粘贴,Ctrl+V',
-        delete: '删除,Del',
-        rename: '重命名,F2',
-      }"
-      @renameComplete="renameComplete"
-    />
+    <div style="overflow: scroll; height: 96%">
+      <TreeForm
+        v-if="r"
+        icon="el-icon-notebook-2"
+        :path="['children']"
+        :folder="trees"
+        :recycled="false"
+        :select="select"
+        :selected="selected.cursor"
+        :dragging="dragging"
+        :dropping="dropping"
+        :readyToDrop="readyToDrop"
+        :unreadyToDrop="unreadyToDrop"
+        :fileOptionCallback="fileOptionCallback"
+        :blurRename="blur"
+        :options="{
+          cut: '剪切,Ctrl+X',
+          copy: '复制,Ctrl+C',
+          paste: '粘贴,Ctrl+V',
+          delete: '删除,Del',
+          rename: '重命名,F2',
+        }"
+        @renameComplete="renameComplete"
+      />
+    </div>
   </div>
 </template>
 
@@ -68,21 +73,7 @@ export default {
   created() {
     API.currentUser().then((resp) => {
       this.meta.user = resp.data.data;
-      dfs.connect(
-        this.meta.user.id,
-        () => {
-          this.trees = dfs.doc.data.root;
-          this.selected.cursor = dfs.doc.data.root;
-        },
-        () => {
-          this.trees = dfs.doc.data.root;
-          this._refreshTree();
-          this.loadingFileTree = false;
-        },
-        () => {
-          this.loadingFileTree = true;
-        }
-      );
+      this.connectToDFS();
       document.documentElement.oncontextmenu = (e) => {
         return false;
       };
@@ -142,6 +133,29 @@ export default {
     };
   },
   methods: {
+    connectToDFS() {
+      this.loadingFileTree = true;
+      dfs.close();
+      dfs.connect(
+        this.meta.user.id,
+        () => {
+          this.trees = dfs.doc.data.root;
+          this.selected.cursor = dfs.doc.data.root;
+        },
+        (op, source) => {
+          this.trees = dfs.doc.data.root;
+          this.$emit("loaded", dfs.doc.data.loaded);
+          if (dfs.doc.data.loaded === true) {
+            this._refreshTree();
+            this.loadingFileTree = false;
+            this.$emit("loaded", true);
+          }
+        },
+        () => {
+          this.loadingFileTree = true;
+        }
+      );
+    },
     _refreshTree() {
       // this.trees = sortTree(this.trees);
       this.r = false;
@@ -156,6 +170,7 @@ export default {
       this.renaming.item = null;
     },
     select(item) {
+      console.log(item);
       this.selected.lock = true;
       if (item.renaming) return;
       item.show = !item.show;
@@ -202,31 +217,59 @@ export default {
         p = new Path(this.selected.cursor.path);
         if (this.selected.cursor.children === undefined) p = p.parent;
       } else p = new Path("/");
-      let label = "新建文档";
-      DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
-        if (resp.data.error === 0) {
-          dfs.touch(p.path, resp.data.data);
-        } else {
-          this.$meesage({
-            type: "error",
-            message: resp.data.data,
-          });
-        }
-      });
+      if (type === "code") {
+        let label = "newCode";
+        DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
+          if (resp.data.error === 0) {
+            dfs.touch(p.path, resp.data.data);
+            let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
+            this.selected.cursor = item;
+            this.selected.item = item;
+            this.fileOptionCallback("rename", item);
+          } else {
+            this.$meesage({
+              type: "error",
+              message: resp.data.data,
+            });
+          }
+        });
+      } else {
+        let label = "新建文档";
+        DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
+          if (resp.data.error === 0) {
+            dfs.touch(p.path, resp.data.data);
+            let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
+            this.selected.cursor = item;
+            this.selected.item = item;
+            this.fileOptionCallback("rename", item);
+          } else {
+            this.$meesage({
+              type: "error",
+              message: resp.data.data,
+            });
+          }
+        });
+      }
     },
     newFolder() {
       let p;
-      if (this.selected.cursor) p = new Path(this.selected.cursor.path);
-      else p = new Path("/");
-      if (this.selected.cursor.children === undefined) p = p.parent;
+      if (this.selected.cursor) {
+        p = new Path(this.selected.cursor.path);
+        if (this.selected.cursor.children === undefined) p = p.parent;
+      } else p = new Path("/");
       let label = "新建文件夹",
         suffix = 0;
       while (dfs.get(p.path + label) !== undefined) {
         label = "新建文件夹" + "-" + ++suffix;
       }
-      dfs.mkdir(p.path + label);
+      dfs.mkdir(p.path + "/" + label);
+      let item = dfs.get(p.path + "/" + label);
+      this.selected.cursor = item;
+      this.selected.item = item;
+      this.fileOptionCallback("rename", item);
     },
     fileOptionCallback(op, item, suppressPrompt = false) {
+      if (item === undefined) return;
       let opZhMap = {
         copy: "复制",
         cut: "剪切",
@@ -294,16 +337,13 @@ export default {
         this._refreshTree();
       }
     },
-    renameComplete(item, callback) {
+    renameComplete(item) {
       if (item.children === undefined) {
         DocAPI.rename(item, item.label).then((resp) => {
-          callback(
-            dfs.rename(item.path, item.label),
-            new Path(item.path).target
-          );
+          dfs.rename(item.path, item.label);
         });
       } else {
-        callback(dfs.rename(item.path, item.label), new Path(item.path).target);
+        dfs.rename(item.path, item.label), new Path(item.path).target;
       }
       this.$emit("renameComplete", item);
     },
@@ -314,7 +354,10 @@ export default {
           delete this.renaming.item.renaming;
           this._refreshTree();
         }
-        this.selected.cursor = dfs.doc.data.root;
+        dfs.doc.fetch((err) => {
+          if (err) throw err;
+          this.selected.cursor = dfs.doc.data.root;
+        })
       }
     },
   },
@@ -323,8 +366,8 @@ export default {
 
 <style scoped>
 .top-bar {
-  margin-top: 15px;
   display: flex;
+  border-bottom: 1px solid rgba(102, 102, 102, .1);
 }
 .top-bar span {
   display: inline-block;
@@ -334,7 +377,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 20px;
+  padding: 0 10px;
   font-family: "Consolas";
   color: #666;
 }

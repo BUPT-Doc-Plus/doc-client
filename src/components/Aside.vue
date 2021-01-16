@@ -6,6 +6,7 @@
       @fileDropped="fileDropped"
       @renameComplete="renameComplete"
       v-show="page === 'folder'"
+      @loaded="onFolderLoaded"
     />
     <Share :doc="selected.item" v-show="page === 'share'" />
     <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
@@ -64,6 +65,9 @@ export default {
       Object.assign(newItem, item);
       this.selected.item = newItem;
       this.$emit("renameComplete");
+    },
+    onFolderLoaded(percent) {
+      this.$emit("loaded", percent);
     }
   },
 };

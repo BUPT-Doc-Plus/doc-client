@@ -29,7 +29,7 @@
           style="display: flex; flex: 1"
         />
       </div>
-      <div v-show="type === 'markdown'" class="full" :span="12" style="display: flex; flex: 1">
+      <div v-show="type === 'markdown' || monacoLanguage === 'markdown'" class="full" :span="12" style="display: flex; flex: 1">
         <div id="parsedMd" style="padding: 0 5%"></div>
       </div>
     </div>
@@ -99,14 +99,19 @@ export default {
   },
   methods: {
     init() {
-      dc.connect(this.doc.id, this.currentUser, () => {
+      dc.login(this.currentUser);
+      dc.connect(this.doc.id, this.currentUser, (access) => {
+        if (access === "r") {
+          this.monacoEditor.updateOptions({ readOnly: true });
+          this.$refs["editor"].quill.disable();
+        }
         dc.doc.subscribe((err) => {
           if (err) throw err;
           var quill = this.$refs["editor"].quill;
           quill.setContents(dc.doc.data);
           this.monacoEditor.setValue(quill.getText());
           quill.on("text-change", (delta, oldDelta, source) => {
-            if (source !== quill) return;
+            if (source !== quill && source !== "user") return;
             dc.doc.submitOp(delta, { source: quill });
           });
           dc.doc.on("op", (op, source) => {

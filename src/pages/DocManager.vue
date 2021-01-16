@@ -1,87 +1,94 @@
 <template>
   <div id="root" class="full">
-    <el-container
-      class="full"
-      @mouseup.native="disableResizing"
-      @mousemove.native="resizeAside"
-    >
-      <el-header style="height: 30px" class="header">
-        <div>
-          <i
-            v-if="selected.item && selected.item.children === undefined"
-            class="el-icon-circle-close"
-            @click="unselectDoc"
-          />
-          {{
-            selected.item
-              ? selected.item.label + ` (${top.indicator}) ` + " - "
-              : ""
-          }}
-          {{ userInfo.name }} - Doc+
-        </div>
-      </el-header>
-      <el-container class="full" style="display: flex">
-        <div
-          :style="`flex: 1; display: flex; max-width: ${aside.width + 50}px;`"
-        >
-          <el-row class="full" @click="handleClickAside()">
-            <el-col class="tool-bar full" style="width: 50px">
-              <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
-            </el-col>
-            <el-col class="full" :span="20">
-              <el-aside
-                class="aside"
-                :style="`width: ${aside.width}px;`"
-                @mouseup.native="dropAtRoot"
-              >
-                <el-row class="full">
-                  <el-col class="full">
-                    <DragAlong
-                      v-if="drag.showAlong"
-                      :name="drag.item.label"
-                      :x="mouse.x"
-                      :y="mouse.y"
-                    />
-                    <Aside
-                      :page="asidePage"
-                      ref="aside"
-                      @fileSelected="onFileSelected"
-                      @fileDragged="onDraggedOrDropped"
-                      @fileDropped="onDraggedOrDropped"
-                      @resultSelected="onResultSelected"
-                      @chatSelected="onChatSelected"
-                      @renameComplete="renameComplete"
-                    />
-                  </el-col>
-                </el-row>
-              </el-aside>
-            </el-col>
-          </el-row>
-        </div>
-        <div class="scale full" style="width: 5px" @mousedown="getStartX"></div>
-        <el-main class="main" style="flex: 1; display: flex">
-          <Editor
-            v-if="
-              r &&
-              selected.item &&
-              selected.type === 'doc' &&
-              selected.item.children === undefined
-            "
-            :doc="selected.item"
-            :type="selected.item.type"
-          />
-          <Chat
-            v-if="
-              r &&
-              selected.item &&
-              selected.type === 'chat' &&
-              selected.item.children !== undefined
-            "
-            :message="selected.item"
-          />
-        </el-main>
+    <transition name="page-fade">
+      <el-container
+        v-show="loadedFlags.reveal && loadedFlags.ws"
+        class="full"
+        @mouseup.native="disableResizing"
+        @mousemove.native="resizeAside"
+      >
+        <el-header style="height: 30px" class="header">
+          <div>
+            <i
+              v-if="selected.item && selected.item.children === undefined"
+              class="el-icon-circle-close"
+              @click="unselectDoc"
+            />
+            {{
+              selected.item
+                ? selected.item.label + " - "
+                : ""
+            }}
+            {{ userInfo.name }} - Doc+
+          </div>
+        </el-header>
+        <el-container class="full" style="display: flex">
+          <div
+            :style="`flex: 1; display: flex; max-width: ${aside.width + 50}px;`"
+          >
+            <el-row class="full" @click="handleClickAside()">
+              <el-col class="tool-bar full" style="width: 50px">
+                <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
+              </el-col>
+              <el-col class="full" :span="20">
+                <el-aside
+                  class="aside"
+                  :style="`width: ${aside.width}px;`"
+                  @mouseup.native="dropAtRoot"
+                >
+                  <el-row class="full">
+                    <el-col class="full">
+                      <DragAlong
+                        v-if="drag.showAlong"
+                        :name="drag.item.label"
+                        :x="mouse.x"
+                        :y="mouse.y"
+                      />
+                      <Aside
+                        :page="asidePage"
+                        ref="aside"
+                        @fileSelected="onFileSelected"
+                        @fileDragged="onDraggedOrDropped"
+                        @fileDropped="onDraggedOrDropped"
+                        @resultSelected="onResultSelected"
+                        @chatSelected="onChatSelected"
+                        @renameComplete="renameComplete"
+                        @loaded="onAsideLoaded"
+                      />
+                    </el-col>
+                  </el-row>
+                </el-aside>
+              </el-col>
+            </el-row>
+          </div>
+          <div class="scale full" style="width: 5px" @mousedown="getStartX"></div>
+          <el-main class="main" style="flex: 1; display: flex">
+            <Editor
+              v-if="
+                r &&
+                selected.item &&
+                selected.type === 'doc' &&
+                selected.item.children === undefined
+              "
+              :doc="selected.item"
+              :type="selected.item.type"
+            />
+            <Chat
+              v-if="
+                r &&
+                selected.item &&
+                selected.type === 'chat' &&
+                selected.item.children !== undefined
+              "
+              :message="selected.item"
+            />
+          </el-main>
+        </el-container>
       </el-container>
-    </el-container>
+    </transition>
+    <transition name="page-fade">
+      <Welcome v-show="!loadedFlags.reveal || !loadedFlags.ws" :percent="loadedFlags.percent"/>
+    </transition>
   </div>
 </template>
 
@@ -91,12 +98,13 @@ import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
+import Welcome from "@/components/Welcome";
 import API from "../biz/API";
 import config from "../biz/config";
 
 export default {
   name: "DocManager",
-  components: { Editor, ToolBar, Aside, DragAlong, Chat },
+  components: { Editor, ToolBar, Aside, DragAlong, Chat, Welcome },
   created() {
     if (localStorage.getItem("token") === null) {
       this.$router.push({ path: "/login/" });
@@ -105,6 +113,7 @@ export default {
     API.currentUser()
       .then((resp) => {
         this.userInfo.name = resp.data.data.nickname;
+        this.loadedFlags.reveal = true;
       })
       .catch((err) => {
         this.$router.push({ path: "/login/" });
@@ -118,6 +127,12 @@ export default {
   },
   data() {
     return {
+      wr: true,
+      loadedFlags: {
+        reveal: false,
+        ws: false,
+        percent: 0
+      },
       r: true,
       asidePage: undefined,
       top: {
@@ -156,6 +171,12 @@ export default {
       this.$nextTick(() => {
         this.r = true;
       });
+    },
+    _refreshWelcome() {
+      this.wr = false;
+      this.$nextTick(() => {
+        this.wr = true;
+      })
     },
     getStartX(e) {
       this.aside.startX = e.screenX;
@@ -232,6 +253,17 @@ export default {
     renameComplete() {
       this._refresh();
     },
+    onAsideLoaded(percent) {
+      if (percent === true) {
+        this.loadedFlags.percent = 100;
+        setTimeout(() => {
+          this.loadedFlags.ws = true;
+        }, 500);
+      } else {
+        if (percent === undefined) percent = 0;
+        this.loadedFlags.percent = Math.round(percent * 100);
+      }
+    }
   },
 };
 </script>
@@ -279,5 +311,14 @@ export default {
 i:hover {
   cursor: pointer;
   color: #aaa;
+}
+.page-fade-enter-active {
+  transition: all .5s ease;
+}
+.page-fade-leave-active {
+  transition: all .5s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+.page-fade-enter, .page-fade-leave-to {
+  opacity: 0;
 }
 </style>
