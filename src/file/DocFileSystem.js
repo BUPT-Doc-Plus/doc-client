@@ -20,7 +20,7 @@ class DocFileSystem {
   }
 
   connect(userId, connectedCallback = () => {
-  }, operationCallback = () => {
+  }, operationCallback = (op, source) => {
   }, disconnectCallback = () => {}) {
     let socket;
     if (this.RECONNECT_OPS === null)
@@ -35,8 +35,8 @@ class DocFileSystem {
     this.doc = this.connection.get("tree-document", "" + userId);
     this.doc.subscribe((err) => {
       if (err) throw err;
-      this.doc.on("op", (op) => {
-        operationCallback(op, this.doc);
+      this.doc.on("op", (op, source) => {
+        operationCallback(op, source);
       })
       connectedCallback(this.doc);
     })

@@ -17,19 +17,37 @@ class DocClient {
     this.RECONNECT_OPS = RECONNECT_OPS;
   }
 
-  connect(docId, userId, connectedCallback = () => {
-  }) {
+  login(userId) {
     let socket;
     if (this.RECONNECT_OPS === null)
-      socket = new ReconnectingWebSocket(DocClient.url(docId, userId, this.type));
+      socket = new ReconnectingWebSocket(DocClient.loginURL(userId));
     else socket = new ReconnectingWebSocket(
-      DocClient.url(docId, userId, this.type),
+      DocClient.loginURL(userId),
       undefined,
       this.RECONNECT_OPS
     );
-    this.connection = new sharedb.Connection(socket);
-    this.doc = this.connection.get("document", "" + docId);
-    connectedCallback();
+    this.loginSocket = socket;
+  }
+
+  connect(docId, userId, connectedCallback = (data) => {
+  }) {
+    this.loginSocket.send(JSON.stringify({
+      token: API.token(),
+      docId: docId
+    }));
+    this.loginSocket.onmessage = (e) => {
+      let socket;
+      if (this.RECONNECT_OPS === null)
+        socket = new ReconnectingWebSocket(DocClient.url(docId, userId, this.type));
+      else socket = new ReconnectingWebSocket(
+        DocClient.url(docId, userId, this.type),
+        undefined,
+        this.RECONNECT_OPS
+      );
+      this.connection = new sharedb.Connection(socket);
+      this.doc = this.connection.get("document", "" + docId);
+      connectedCallback(e.data);
+    }
   }
 
   close() {
@@ -40,5 +58,6 @@ class DocClient {
 }
 
 DocClient.url = (docId, userId, type) => `ws://${config.midHost}/${type}/${docId}/${userId}?token=${API.token()}`;
+DocClient.loginURL = (userId) => `ws://${config.midHost}/login/${userId}?token=${API.token()}`;
 
 module.exports = {DocClient};
