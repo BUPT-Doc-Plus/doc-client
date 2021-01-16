@@ -1,10 +1,10 @@
 <template>
   <div class="full">
     <el-container class="full">
-      <el-header class="head" style="height: 30px"></el-header>
+      <el-header v-if="!inline" class="head" style="height: 30px"></el-header>
       <el-container id="main">
         <el-main class="form">
-          <h1 class="welcome">
+          <h1 v-if="!inline" class="welcome">
             <div>Doc+</div>
             <div class="btns">
               <span
@@ -71,10 +71,12 @@
 </template>
 
 <script>
+import API from '../biz/API';
 import AuthorAPI from "../biz/AuthorAPI";
 import DocAPI from "../biz/DocAPI";
 
 export default {
+  props: ["inline"],
   data() {
     return {
       step: 0,
@@ -107,6 +109,26 @@ export default {
       setTimeout(() => {
         this.inputClassName[id] = "";
       }, 250);
+    },
+    _replaceTokenInStoredAccount(userData, newToken) {
+      let allUsers = localStorage.getItem("allUsers");
+      let contains = false;
+      if (allUsers) {
+        allUsers = JSON.parse(allUsers);
+        for (let item of allUsers) {
+          if (item.data.id == userData.id) {
+            item.token = newToken;
+            contains = true;
+          }
+        }
+        if (!contains) {
+          allUsers.push({
+            token: newToken,
+            data: userData
+          })
+        }
+        localStorage.setItem("allUsers", JSON.stringify(allUsers));
+      }
     },
     next() {
       this.submittingInfo = true;
@@ -156,8 +178,15 @@ export default {
       } else if (this.step === 1) {
         AuthorAPI.login(this.input.email, this.input.password)
           .then((resp) => {
-            localStorage.setItem("token", resp.data.data);
-            this.$router.replace({ path: "/" });
+            if (!this.inline) {
+              localStorage.setItem("token", resp.data.data);
+              API.currentUser().then((u) => {
+                this._replaceTokenInStoredAccount(u.data.data, resp.data.data);
+              })
+              this.$router.replace({ path: "/" });
+            } else {
+              this.$emit("complete", resp.data.data)
+            }
             this.submittingInfo = false;
           })
           .catch((err) => {
@@ -202,8 +231,15 @@ export default {
       } else if (this.step === 3) {
         AuthorAPI.activate(this.input.validCode, this.token)
           .then((resp) => {
-            localStorage.setItem("token", resp.data.data);
-            this.$router.replace({ path: "/" });
+            if (!this.inline) {
+              localStorage.setItem("token", resp.data.data);
+              API.currentUser().then((u) => {
+                this._replaceTokenInStoredAccount(u.data.data, resp.data.data);
+              })
+              this.$router.replace({ path: "/" });
+            } else {
+              this.$emit("complete", resp.data.data)
+            }
             this.submittingInfo = false;
           })
           .catch((err) => {

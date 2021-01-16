@@ -8,4 +8,7 @@ export default class API {
     static currentUser() {
         return axios.get(`http://${config.bizHost}/reveal/?token=${API.token()}`);
     }
+    static revealToken(token) {
+        return axios.get(`http://${config.bizHost}/reveal/?token=${token}`);
+    }
 }

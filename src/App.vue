@@ -1,12 +1,30 @@
 <template>
   <div id="app" class="full">
-    <router-view />
+    <router-view v-if="r"/>
   </div>
 </template>
 
 <script>
 export default {
   name: "App",
+  provide() {
+    return {
+      reload: this.reload
+    }
+  },
+  data() {
+    return {
+      r: true
+    }
+  },
+  methods: {
+    reload() {
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      })
+    }
+  }
 };
 </script>
 
