@@ -95,6 +95,7 @@
         />
       </li>
     </ul>
+    <div style="height: 2rem"></div>
   </div>
 </template>
 
@@ -144,18 +145,11 @@ export default {
     submitRename(item) {
       let prevName = item.label;
       item.renaming = false;
+      this._refreshTree();
       this.renameComplete(item);
     },
     renameComplete(item) {
-      this.$emit("renameComplete", item, (success, prevName) => {
-        if (!success) {
-          this.$message({
-            message: `已有名为"${item.label}"的项目存在`,
-            type: "error"
-          });
-          item.label = prevName;
-        }
-      });
+      this.$emit("renameComplete", item);
     },
   },
 };
@@ -169,6 +163,7 @@ export default {
 .tree-inner {
   border-left: 1px solid #aaa;
   padding-left: 1em;
+  margin-top: 0;
 }
 .tree {
   padding-left: 0.5em;
