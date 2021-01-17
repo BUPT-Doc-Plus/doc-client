@@ -20,15 +20,8 @@ export default class DocAPI extends API {
         )
     }
     static async remove(doc, userId) {
-        try {
-            // 尝试直接删除
-            const resp = await axios.delete(`http://${config.bizHost}/doc/${doc.id}?token=${DocAPI.token()}`);
-            return resp;
-        } catch (err) {
-            // 尝试移除自身权限
-            const resp = await axios.delete(`http://${config.bizHost}/kick/${doc.id}/${userId}?token=${DocAPI.token()}`);
-            return resp;
-        }
+        const resp = await axios.delete(`http://${config.bizHost}/doc/${doc.id}?token=${DocAPI.token()}`);
+        return resp;
     }
     static invite(doc, author, role) {
         return axios.post(`http://${config.bizHost}/invite/?token=${DocAPI.token()}`, {
