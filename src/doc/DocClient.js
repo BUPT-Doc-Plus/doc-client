@@ -15,6 +15,7 @@ class DocClient {
     this.type = type;
     this.doc = null;
     this.RECONNECT_OPS = RECONNECT_OPS;
+    this.logged = false;
   }
 
   login(userId) {
@@ -29,8 +30,7 @@ class DocClient {
     this.loginSocket = socket;
   }
 
-  connect(docId, userId, connectedCallback = (data) => {
-  }) {
+  connect(docId, userId, connectedCallback = (data) => {}) {
     this.loginSocket.send(JSON.stringify({
       token: API.token(),
       docId: docId
@@ -44,6 +44,9 @@ class DocClient {
         undefined,
         this.RECONNECT_OPS
       );
+      if (this.connection) {
+        this.connection.close();
+      }
       this.connection = new sharedb.Connection(socket);
       this.doc = this.connection.get("document", "" + docId);
       connectedCallback(e.data);
