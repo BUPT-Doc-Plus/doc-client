@@ -71,15 +71,15 @@ export default {
       }
       this.monacoLanguage = suffix;
     }
-    API.currentUser().then((resp) => {
-      this.currentUser = resp.data.data.id;
-      this.init();
-    });
   },
   mounted() {
     for (let e of document.getElementsByClassName("ql-snow")) {
       e.style.border = "none";
     }
+    API.currentUser().then((resp) => {
+      this.currentUser = resp.data.data.id;
+      this.init();
+    });
   },
   data() {
     return {
@@ -103,8 +103,30 @@ export default {
       dc.connect(this.doc.id, this.currentUser, (access) => {
         if (access === "r") {
           this.monacoEditor.updateOptions({ readOnly: true });
-          this.$refs["editor"].quill.disable();
+          if (this.$refs["editor"].quill.disable)
+            this.$refs["editor"].quill.disable();
+          else
+            this.$refs["editor"].quill.editor.enable(false);
+          if (dc.logged) {
+            this.$message({
+              type: "warning",
+              message: "您的权限已被更改为只读"
+            });
+          }
+        } else if (access === "w") {
+          this.monacoEditor.updateOptions({ readOnly: false });
+          if (this.$refs["editor"].quill.enable)
+            this.$refs["editor"].quill.enable();
+          else
+            this.$refs["editor"].quill.editor.enable(true);
+          if (dc.logged) {
+            this.$message({
+              type: "success",
+              message: "您的权限已被更改为可协作"
+            });
+          }
         }
+        dc.logged = true;
         dc.doc.subscribe((err) => {
           if (err) throw err;
           var quill = this.$refs["editor"].quill;
