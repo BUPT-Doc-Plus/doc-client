@@ -95,7 +95,7 @@
         />
       </li>
     </ul>
-    <div style="height: 2rem"></div>
+    <div v-if="layer === 0" style="height: 2rem"></div>
   </div>
 </template>
 
