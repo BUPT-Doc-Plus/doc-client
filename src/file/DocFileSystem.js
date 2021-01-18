@@ -49,16 +49,17 @@ class DocFileSystem {
   }
 
   get(path) {
-    if (path === "/") return this.doc.data.root;
-    if (path.endsWith("/")) path = path.slice(0, -1);
-    let jpath = new Path(path).jpath;
-    let root = this.doc.data.root;
-    for (let p of jpath) {
-      root = root[p];
-      if (root === undefined)
-        return root;
-    }
-    return root;
+    return this.doc.data.indices[path];
+    // if (path === "/") return this.doc.data.root;
+    // if (path.endsWith("/")) path = path.slice(0, -1);
+    // let jpath = new Path(path).jpath;
+    // let root = this.doc.data.root;
+    // for (let p of jpath) {
+    //   root = root[p];
+    //   if (root === undefined)
+    //     return root;
+    // }
+    // return root;
   }
 
   touch(path, data) {
@@ -73,6 +74,14 @@ class DocFileSystem {
     this.doc.submitOp([
       {
         p: ["root", ...p.jpath],
+        oi: data
+      },
+      {
+        p: ["indices", p.path],
+        oi: data
+      },
+      {
+        p: ["idPath", data.id],
         oi: data
       }
     ]);
@@ -99,6 +108,10 @@ class DocFileSystem {
         {
           p: ["root", ...p.jpath],
           oi: data
+        },
+        {
+          p: ["indices", p.path],
+          oi: data
         }
       ]);
     }
@@ -110,10 +123,23 @@ class DocFileSystem {
     if (this.get(path) === undefined)
       return false;
     let p = new Path(path);
-    this.doc.submitOp({
-      p: ["root", ...p.jpath],
-      od: this.get(path)
-    });
+    let ops = [
+      {
+        p: ["root", ...p.jpath],
+        od: this.get(path)
+      },
+      {
+        p: ["indices", p.path],
+        od: this.get(path)
+      }
+    ];
+    if (this.get(path).id) {
+      ops.push({
+        p: ["idPath", this.get(path).id],
+        od: path
+      })
+    }
+    this.doc.submitOp(ops);
     return true;
   }
 
@@ -142,7 +168,7 @@ class DocFileSystem {
     if (this.get(destFile) !== undefined) {
       flag = 1;
     }
-    this.doc.submitOp([
+    let ops = [
       {
         p: ["root", ...new Path(destFile).jpath],
         oi: this.get(src)
@@ -150,8 +176,23 @@ class DocFileSystem {
       {
         p: ["root", ...new Path(destFile).jpath, "path"],
         oi: destFile
-      }
-    ]);
+      },
+      {
+        p: ["indices", destFile],
+        oi: this.get(src)
+      },
+      {
+        p: ["indices", destFile, "path"],
+        oi: destFile
+      },
+    ];
+    if (this.get(src).id) {
+      ops.push({
+        p: ["idPath", this.get(src).id],
+        oi: destFile
+      })
+    }
+    this.doc.submitOp(ops);
     if (this.clipboard.cut) {
       this.clipboard.cut = false;
       this.remove(src);
@@ -166,16 +207,31 @@ class DocFileSystem {
       return false;
     this.get(path).label = newName;
     this.get(path).path = newPath;
-    this.doc.submitOp([
+    let ops = [
       {
         p: ["root", ...new Path(newPath).jpath],
         oi: this.get(path)
       },
       {
+        p: ["indices", new Path(newPath).path],
+        oi: this.get(path)
+      },
+      {
         p: ["root", ...p.jpath],
         od: this.get(path)
+      },
+      {
+        p: ["indices", p.path],
+        od: this.get(path)
       }
-    ])
+    ];
+    if (this.get(path).id) {
+      ops.push({
+        p: ["idPath", this.get(path).id],
+        oi: newPath
+      })
+    }
+    this.doc.submitOp(ops);
     return true;
   }
 }
