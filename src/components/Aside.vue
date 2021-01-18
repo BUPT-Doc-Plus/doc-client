@@ -7,6 +7,7 @@
       @renameComplete="renameComplete"
       v-show="page === 'folder'"
       @loaded="onFolderLoaded"
+      @selectedFileClosed="onSelectedFileClosed"
     />
     <Share :doc="selected.item" v-show="page === 'share'" />
     <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
@@ -68,6 +69,9 @@ export default {
     },
     onFolderLoaded(percent) {
       this.$emit("loaded", percent);
+    },
+    onSelectedFileClosed() {
+      this.$emit("selectedFileClosed");
     }
   },
 };

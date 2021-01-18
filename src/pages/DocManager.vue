@@ -54,6 +54,7 @@
                         @chatSelected="onChatSelected"
                         @renameComplete="renameComplete"
                         @loaded="onAsideLoaded"
+                        @selectedFileClosed="unselectDoc"
                       />
                     </el-col>
                   </el-row>

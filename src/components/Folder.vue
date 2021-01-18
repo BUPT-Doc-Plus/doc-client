@@ -7,7 +7,7 @@
     element-loading-background="rgba(243, 243, 243, 1)"
     style="overflow: hidden;"
   >
-    <div class="top-bar" style="height: 4%;">
+    <div class="top-bar" style="height: 30px;">
       <div class="top-title">我的文档</div>
       <div class="top-btns">
         <div class="el-dropdown">
@@ -149,6 +149,9 @@ export default {
             this._refreshTree();
             this.loadingFileTree = false;
             this.$emit("loaded", true);
+          }
+          if (this.selected.item && dfs.doc.data.idPath[this.selected.item.id] === undefined) {
+            this.$emit("selectedFileClosed")
           }
         },
         () => {
