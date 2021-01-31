@@ -1,21 +1,9 @@
 # doc-client
 
-> frontend of doc plus
+## 需求0131
 
-## Build Setup
-
-``` bash
-# install dependencies
-npm install
-
-# serve with hot reload at localhost:8080
-npm run dev
-
-# build for production with minification
-npm run build
-
-# build for production and view the bundle analyzer report
-npm run build --report
-```
-
-For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
+- 多文档窗口
+- 文档树分层次动态加载
+- 即时通讯后台
+- 搜索结果分页
+- 更改昵称和密码

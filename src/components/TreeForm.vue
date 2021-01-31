@@ -24,7 +24,7 @@
           </v-contextmenu-item>
         </v-contextmenu>
         <span
-          v-if="!item.nonContext"
+          v-if="!item.nonContext && !(item.recycled ^ recycled)"
           v-contextmenu:contextmenu
           :class="'item' + (item.cut ? ' item-cut' : '')"
           :data="{ item }"
@@ -113,6 +113,7 @@ export default {
     "layer",
     "fileOptionCallback",
     "options",
+    "recycled"
   ],
   name: "TreeForm",
   data() {

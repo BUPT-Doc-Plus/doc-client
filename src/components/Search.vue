@@ -1,9 +1,10 @@
 <template>
   <div>
     <div class="search-box">
-      <el-input v-model="search.keywords" placeholder="搜索文档"></el-input>
+      <el-input v-model="search.keywords" placeholder="搜索文档" @input="onKeywordsChange"></el-input>
     </div>
     <TreeForm
+      v-if="r"
       icon="el-icon-notebook-2"
       :folder="trees"
       :select="select"
@@ -14,29 +15,44 @@
 </template>
 
 <script>
-import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
+import DocAPI from '../biz/DocAPI';
 
 export default {
   components: {
     TreeForm,
   },
   created () {
-    this.fullTree = Tree.getSearch(null);
-    this.trees = this.fullTree.children;
+
   },
   data() {
     return {
-      fullTree: null,
-      trees: null,
+      r: true,
+      trees: { 
+        children: { 
+          result: {
+            label: "搜索结果",
+            show: true,
+            children: {} 
+          } 
+        } 
+      },
       search: {
-        keywords: ''
+        keywords: '',
+        s: null
       },
       selectedDoc: null
     }
   },
   methods: {
-    select(folder, item) {
+    _refreshTree() {
+      // this.trees = sortTree(this.trees);
+      this.r = false;
+      this.$nextTick(() => {
+        this.r = true;
+      });
+    },
+    select(item) {
       item.show = !item.show;
       if (!item.children) {
         this.$emit('resultSelected', folder, item);
@@ -45,10 +61,28 @@ export default {
     },
     optionCallback(op, folder, item) {
       
+    },
+    onKeywordsChange() {
+      if (this.s) clearTimeout(this.s);
+      this.s = setTimeout(() => {
+        DocAPI.search(this.search.keywords).then((resp) => {
+          this.trees.children.result.children = {};
+          for (let doc of resp.data.data) {
+            this.trees.children.result.children[doc.label + "-" + doc.id] = doc;
+          }
+          this._refreshTree();
+        })
+      }, 200)
     }
   },
 };
 </script>
 
 <style>
+.search-box {
+  padding: 5px;
+}
+.search-box .el-input__inner {
+  border-radius: 0;
+}
 </style>

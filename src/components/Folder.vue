@@ -8,12 +8,15 @@
     style="overflow: hidden;"
   >
     <div class="top-bar" style="height: 30px;">
-      <div class="top-title">我的文档</div>
+      <div class="top-title">
+        <span v-show="!recycled">我的文档</span>
+        <span v-show="recycled">回收站</span>
+      </div>
       <div class="top-btns">
         <div class="el-dropdown">
           <span><i class="el-icon-refresh" @click="connectToDFS" /></span>
         </div>
-        <el-dropdown @command="newDocument">
+        <el-dropdown v-show="!recycled" @command="newDocument">
           <span><i class="el-icon-document-add" /></span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item command="rich">富文本</el-dropdown-item>
@@ -21,7 +24,7 @@
             <el-dropdown-item command="code">代码</el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
-        <div class="el-dropdown">
+        <div v-show="!recycled" class="el-dropdown">
           <span><i class="el-icon-folder-add" @click="newFolder" /></span>
         </div>
       </div>
@@ -32,7 +35,7 @@
         icon="el-icon-notebook-2"
         :path="['children']"
         :folder="trees"
-        :recycled="false"
+        :recycled="recycled"
         :select="select"
         :selected="selected.cursor"
         :dragging="dragging"
@@ -41,13 +44,7 @@
         :unreadyToDrop="unreadyToDrop"
         :fileOptionCallback="fileOptionCallback"
         :blurRename="blur"
-        :options="{
-          cut: '剪切,Ctrl+X',
-          copy: '复制,Ctrl+C',
-          paste: '粘贴,Ctrl+V',
-          delete: '删除,Del',
-          rename: '重命名,F2',
-        }"
+        :options="recycled ? contextMenu.recycleOption : contextMenu.folderOption"
         @renameComplete="renameComplete"
       />
     </div>
@@ -60,19 +57,18 @@ import TreeForm from "@/components/TreeForm";
 import hotkeys from "hotkeys-js";
 import sortTree from "../util/sort";
 import findBinary from "../util/findBinary";
-import { DocFileSystem } from "../file/DocFileSystem";
+import { dfs } from "../file/DocFileSystem";
 import { Path } from "../file/Path";
 import axios from "axios";
 import DocAPI from "../biz/DocAPI";
 import API from "../biz/API";
-
-var dfs = new DocFileSystem();
+import getRecycledFromTree from "../util/recycled";
 
 export default {
+  props: ["recycled"],
   components: { TreeForm },
   created() {
     API.currentUser().then((resp) => {
-      this.meta.user = resp.data.data;
       this.connectToDFS();
       document.documentElement.oncontextmenu = (e) => {
         return false;
@@ -98,9 +94,6 @@ export default {
   },
   data() {
     return {
-      meta: {
-        user: null,
-      },
       showAlongTimeout: null,
       itemToShowTimeout: null,
       r: true,
@@ -128,8 +121,21 @@ export default {
         x: 0,
         y: 0,
       },
-      trees: null,
+      trees: { children: {} },
       loadingFileTree: true,
+      contextMenu: {
+        folderOption: {
+          cut: "剪切,Ctrl+X",
+          copy: "复制,Ctrl+C",
+          paste: "粘贴,Ctrl+V",
+          recycle: "删除,Del",
+          rename: "重命名,F2",
+        },
+        recycleOption: {
+          restore: "还原,Ctrl+R",
+          delete: "彻底删除,Del",
+        }
+      }
     };
   },
   methods: {
@@ -137,13 +143,25 @@ export default {
       this.loadingFileTree = true;
       dfs.close();
       dfs.connect(
-        this.meta.user.id,
+        API.user.id,
         () => {
-          this.trees = dfs.doc.data.root;
+          if (this.recycled) {
+            getRecycledFromTree(dfs.doc.data.root, (node) => {
+              this.trees.children[node.label + "-" + node.id] = node;
+            })
+          } else {
+            this.trees = dfs.doc.data.root;
+          }
           this.selected.cursor = dfs.doc.data.root;
         },
         (op, source) => {
-          this.trees = dfs.doc.data.root;
+          if (this.recycled) {
+            getRecycledFromTree(dfs.doc.data.root, (node) => {
+              this.trees.children[node.label + "-" + node.id] = node;
+            })
+          } else {
+            this.trees = dfs.doc.data.root;
+          }
           this.$emit("loaded", dfs.doc.data.loaded);
           if (dfs.doc.data.loaded === true) {
             this._refreshTree();
@@ -173,7 +191,6 @@ export default {
       this.renaming.item = null;
     },
     select(item) {
-      console.log(item);
       this.selected.lock = true;
       if (item.renaming) return;
       item.show = !item.show;
@@ -222,13 +239,13 @@ export default {
       } else p = new Path("/");
       if (type === "code") {
         let label = "newCode";
-        DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
+        DocAPI.createDoc(label, type, API.user.id).then((resp) => {
           if (resp.data.error === 0) {
             dfs.touch(p.path, resp.data.data);
-            let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
-            this.selected.cursor = item;
-            this.selected.item = item;
-            this.fileOptionCallback("rename", item);
+            // let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
+            // this.selected.cursor = item;
+            // this.selected.item = item;
+            // this.fileOptionCallback("rename", item);
           } else {
             this.$meesage({
               type: "error",
@@ -238,7 +255,7 @@ export default {
         });
       } else {
         let label = "新建文档";
-        DocAPI.createDoc(label, type, this.meta.user.id).then((resp) => {
+        DocAPI.createDoc(label, type, API.user.id).then((resp) => {
           if (resp.data.error === 0) {
             dfs.touch(p.path, resp.data.data);
             let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
@@ -277,16 +294,32 @@ export default {
         copy: "复制",
         cut: "剪切",
         paste: "粘贴",
+        recycle: "删除",
         delete: "删除",
+        restore: "还原"
       };
       let opFnMap = {
         copy: () => dfs.copy(item.path),
         cut: () => dfs.cut(item.path),
         paste: () => dfs.paste(item.path),
+        recycle: () => {
+          if (item.children !== undefined) {
+            for (let key in item.children) {
+              this.fileOptionCallback("recycle", item.children[key], true);
+            }
+          }
+          return dfs.recycle(item.path)
+        },
+        rename: () => {
+          item.renaming = true;
+          this._refreshTree();
+          return -2;
+        },
+        restore: () => dfs.restore(item.path),
         delete: () => {
           // 递归删除
           if (item.children === undefined) {
-            DocAPI.remove(item, this.meta.user.id);
+            DocAPI.remove(item, API.user.id);
           } else {
             for (let key in item.children) {
               this.fileOptionCallback("delete", item.children[key], true);
@@ -294,13 +327,30 @@ export default {
           }
           return dfs.remove(item.path);
         },
-        rename: () => {
-          item.renaming = true;
-          this._refreshTree();
-          return -2;
-        },
       };
-      if (op === "delete" && !suppressPrompt) {
+      if (op === "recycle" && !suppressPrompt) {
+        this.$confirm(`确定将"${item.label}"移至回收站?`, "删除", {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        }).then(() => {
+          let flag = opFnMap[op]();
+          if (!suppressPrompt) {
+            if (flag) {
+              this.$message({
+                message: `${opZhMap[op]}成功`,
+                type: "success",
+              });
+            } else {
+              this.$message({
+                message: `${opZhMap[op]}失败`,
+                type: "error",
+              });
+            }
+          }
+          this._refreshTree();
+        });
+      } else if (op === "delete" && !suppressPrompt) {
         this.$confirm(`确定删除"${item.label}"? 该操作不可逆!`, "危险行为", {
           confirmButtonText: "确定",
           cancelButtonText: "取消",

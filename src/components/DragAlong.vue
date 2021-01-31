@@ -1,5 +1,5 @@
 <template>
-  <div :style="`z-index: 9999; position: absolute; left: ${x - 40}px; top: ${y - 25}px;`">
+  <div :style="`z-index: 9999; position: fixed; left: ${x - 40}px; top: ${y - 25}px;`">
     <div class="along">{{ name }}</div>
   </div>
 </template>

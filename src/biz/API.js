@@ -12,3 +12,7 @@ export default class API {
         return axios.get(`http://${config.bizHost}/reveal/?token=${token}`);
     }
 }
+
+API.currentUser().then((resp) => {
+    API.user = resp.data.data;
+})

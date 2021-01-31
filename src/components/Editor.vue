@@ -7,14 +7,15 @@
     element-loading-background="rgba(255, 255, 255, 1)"
   >
     <quill-editor
+      :id="'editor-' + doc.id"
       v-show="type === 'rich'"
       v-model="content"
-      ref="editor"
+      :ref="'editor-' + doc.id"
       :options="editorOption"
     ></quill-editor>
     <div v-show="type !== 'rich'" class="full" style="display: flex">
       <div
-        id="monaco-box"
+        :id="'monaco-box-' + doc.id"
         class="full"
         style="border-right: 0.7px solid #bbb; display: flex; flex: 1"
         :span="12"
@@ -23,14 +24,19 @@
           class="pointEventNone"
           :language="monacoLanguage"
           :code="code"
-          ref="monaco"
+          :ref="'monaco-' + doc.id"
           @mounted="onMonacoMounted"
           theme="vs"
           style="display: flex; flex: 1"
         />
       </div>
-      <div v-show="type === 'markdown' || monacoLanguage === 'markdown'" class="full" :span="12" style="display: flex; flex: 1">
-        <div id="parsedMd" style="padding: 0 5%"></div>
+      <div
+        v-show="type === 'markdown' || monacoLanguage === 'markdown'"
+        class="full"
+        :span="12"
+        style="display: flex; flex: 1"
+      >
+        <div :id="'parsedMd-' + doc.id" style="padding: 0 5%"></div>
       </div>
     </div>
   </div>
@@ -57,11 +63,8 @@ export default {
     quillEditor,
     MonacoEditor,
   },
-  destroyed() {
-    dc.close();
-  },
   created() {
-    dc = new DocClient("rich-text");
+    dc = DocClient.getDocClient(this.doc.id, API.user.id);
     this.loadingEditor = true;
     if (this.type === "code") {
       let names = this.doc.label.split(".");
@@ -71,15 +74,18 @@ export default {
       }
       this.monacoLanguage = suffix;
     }
+    API.currentUser().then((resp) => {
+      API.user = resp.data.data;
+      this.init();
+    });
+    console.log(this.doc);
+    console.log(this.type);
+    console.log(this.monacoLanguage);
   },
   mounted() {
     for (let e of document.getElementsByClassName("ql-snow")) {
       e.style.border = "none";
     }
-    API.currentUser().then((resp) => {
-      this.currentUser = resp.data.data.id;
-      this.init();
-    });
   },
   data() {
     return {
@@ -93,43 +99,38 @@ export default {
       editorOption: {},
       monacoEditor: null,
       loadingEditor: false,
-      currentUser: null,
       monacoLanguage: "markdown",
     };
   },
   methods: {
     init() {
-      dc.login(this.currentUser);
-      dc.connect(this.doc.id, this.currentUser, (access) => {
+      dc.connect(this.doc.id, API.user.id, (access) => {
         if (access === "r") {
           this.monacoEditor.updateOptions({ readOnly: true });
-          if (this.$refs["editor"].quill.disable)
-            this.$refs["editor"].quill.disable();
-          else
-            this.$refs["editor"].quill.editor.enable(false);
+          if (this.$refs["editor-" + this.doc.id].quill.disable)
+            this.$refs["editor-" + this.doc.id].quill.disable();
+          else this.$refs["editor-" + this.doc.id].quill.editor.enable(false);
           if (dc.logged) {
             this.$message({
               type: "warning",
-              message: "您的权限已被更改为只读"
+              message: "您的权限已被更改为只读",
             });
           }
         } else if (access === "w") {
           this.monacoEditor.updateOptions({ readOnly: false });
-          if (this.$refs["editor"].quill.enable)
-            this.$refs["editor"].quill.enable();
-          else
-            this.$refs["editor"].quill.editor.enable(true);
+          if (this.$refs["editor-" + this.doc.id].quill.enable)
+            this.$refs["editor-" + this.doc.id].quill.enable();
+          else this.$refs["editor-" + this.doc.id].quill.editor.enable(true);
           if (dc.logged) {
             this.$message({
               type: "success",
-              message: "您的权限已被更改为可协作"
+              message: "您的权限已被更改为可协作",
             });
           }
         }
-        dc.logged = true;
         dc.doc.subscribe((err) => {
           if (err) throw err;
-          var quill = this.$refs["editor"].quill;
+          var quill = this.$refs["editor-" + this.doc.id].quill;
           quill.setContents(dc.doc.data);
           this.monacoEditor.setValue(quill.getText());
           quill.on("text-change", (delta, oldDelta, source) => {
@@ -139,7 +140,7 @@ export default {
           dc.doc.on("op", (op, source) => {
             if (source === quill) return;
             quill.updateContents(op);
-            this.$refs["monaco"].$off("codeChange");
+            this.$refs["monaco-" + this.doc.id].$off("codeChange");
             let { lineNumber, column } = this.monacoEditor.getPosition();
             column += cursorOffset(this.monacoEditor.getValue(), op.ops, {
               lineNumber,
@@ -147,9 +148,12 @@ export default {
             });
             this.monacoEditor.setValue(quill.getText());
             this.monacoEditor.setPosition({ lineNumber, column });
-            this.$refs["monaco"].$on("codeChange", () => {
+            this.$refs["monaco-" + this.doc.id].$on("codeChange", () => {
               this.updateRenderedMd();
-              this.$refs["monaco"].$on("codeChange", codeChangeHanlder);
+              this.$refs["monaco-" + this.doc.id].$on(
+                "codeChange",
+                codeChangeHanlder
+              );
             });
           });
           var codeChangeHanlder = () => {
@@ -161,21 +165,24 @@ export default {
             quill.updateContents(ops, quill);
             this.updateRenderedMd();
           };
-          this.$refs["monaco"].$on("codeChange", codeChangeHanlder);
+          this.$refs["monaco-" + this.doc.id].$on(
+            "codeChange",
+            codeChangeHanlder
+          );
           this.loadingEditor = false;
         });
       });
     },
     onMonacoMounted(editor) {
       this.monacoEditor = editor;
-      document.getElementById("parsedMd").innerHTML = this.md.render(
-        this.monacoEditor.getValue()
-      );
+      document.getElementById(
+        "parsedMd-" + this.doc.id
+      ).innerHTML = this.md.render(this.monacoEditor.getValue());
     },
     updateRenderedMd() {
-      document.getElementById("parsedMd").innerHTML = this.md.render(
-        this.monacoEditor.getValue()
-      );
+      document.getElementById(
+        "parsedMd-" + this.doc.id
+      ).innerHTML = this.md.render(this.monacoEditor.getValue());
     },
     trimEndLinebreak(s) {
       if (s.endsWith("\n")) return s.slice(0, -1);

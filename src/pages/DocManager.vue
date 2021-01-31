@@ -16,7 +16,7 @@
             />
             {{
               selected.item
-                ? selected.item.label + " - "
+                ? (selected.type === "doc" ? selected.item.label + " - " : selected.item.sender + " - ")
                 : ""
             }}
             {{ userInfo.name }} - Doc+
@@ -75,11 +75,9 @@
               :type="selected.item.type"
             />
             <Chat
-              v-if="
-                r &&
+              v-if="r &&
                 selected.item &&
-                selected.type === 'chat' &&
-                selected.item.children !== undefined
+                selected.type === 'chat'
               "
               :message="selected.item"
             />
@@ -106,6 +104,11 @@ import config from "../biz/config";
 export default {
   name: "DocManager",
   components: { Editor, ToolBar, Aside, DragAlong, Chat, Welcome },
+  provide() {
+    return {
+      getAsideWidth: () => this.aside.width
+    }
+  },
   created() {
     if (localStorage.getItem("token") === null) {
       this.$router.push({ path: "/login/" });
@@ -140,7 +143,7 @@ export default {
         indicator: "",
       },
       toolbar: {
-        menu: ["folder", "search", "delete", "bell", "setting"],
+        menu: ["folder", "search", "delete", "chat-line-square", "setting"],
       },
       mouse: {
         x: 0,
@@ -227,18 +230,13 @@ export default {
         this._refresh();
       }
     },
-    onDraggedOrDropped(drag, trees) {
+    onDraggedOrDropped(drag) {
       this.drag = drag;
-      this.trees = trees;
     },
     dropAtRoot() {
-      if (this.drag.item) {
-        this.trees.push(this.drag.item);
-        this.drag.folder.splice(this.drag.folder.indexOf(this.drag.item), 1);
-      }
+      console.log("drop at root");
       this.drag.showAlong = false;
       this.drag.item = null;
-      // sortTree(this.trees);
     },
     onResultSelected(folder, item) {
       this.selected.item = item;

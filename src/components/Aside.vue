@@ -1,18 +1,18 @@
 <template>
   <div class="aside full">
+    <Share :doc="selected.item" v-show="page === 'share'" />
+    <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
     <Folder
+      v-show="page === 'delete' || page === 'folder'"
+      :recycled="page === 'delete'"
       @fileSelected="fileSelected"
       @fileDragged="fileDragged"
       @fileDropped="fileDropped"
       @renameComplete="renameComplete"
-      v-show="page === 'folder'"
       @loaded="onFolderLoaded"
       @selectedFileClosed="onSelectedFileClosed"
     />
-    <Share :doc="selected.item" v-show="page === 'share'" />
-    <Search v-show="page === 'search'" @resultSelected="resultSelected"/>
-    <Recycle v-show="page === 'delete'" @resultSelected="resultSelected"/>
-    <Message v-show="page === 'bell'" @selectChat="chatSelected"/>
+    <Message v-show="page === 'chat-line-square'" @selectChat="chatSelected"/>
     <Settings v-show="page === 'setting'"/>
   </div>
 </template>
@@ -21,7 +21,6 @@
 import Folder from "@/components/Folder";
 import Share from "@/components/Share";
 import Search from "@/components/Search";
-import Recycle from "@/components/Recycle";
 import Message from "@/components/Message";
 import Settings from "@/components/Settings";
 
@@ -31,7 +30,7 @@ export default {
       default: "folder",
     },
   },
-  components: { Folder, Share, Search, Recycle, Message, Settings },
+  components: { Folder, Share, Search, Message, Settings },
   created() {
     document.documentElement.oncontextmenu = (e) => {
       return false;

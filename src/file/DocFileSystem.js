@@ -22,16 +22,15 @@ class DocFileSystem {
   connect(userId, connectedCallback = () => {
   }, operationCallback = (op, source) => {
   }, disconnectCallback = () => {}) {
-    let socket;
     if (this.RECONNECT_OPS === null)
-      socket = new ReconnectingWebSocket(DocFileSystem.url.document(userId));
-    else socket = new ReconnectingWebSocket(
+      this.socket = new ReconnectingWebSocket(DocFileSystem.url.document(userId));
+    else this.socket = new ReconnectingWebSocket(
       DocFileSystem.url.document(userId),
       undefined,
       this.RECONNECT_OPS
     );
-    socket.onclose = disconnectCallback;
-    this.connection = new sharedb.Connection(socket);
+    this.socket.onclose = disconnectCallback;
+    this.connection = new sharedb.Connection(this.socket);
     this.doc = this.connection.get("tree-document", "" + userId);
     this.doc.subscribe((err) => {
       if (err) throw err;
@@ -46,6 +45,9 @@ class DocFileSystem {
     if (this.connection !== undefined)
       this.connection.close();
     this.connection = undefined;
+    if (this.socket !== undefined)
+      this.socket.close();
+    this.socket = undefined;
   }
 
   get(path) {
@@ -118,25 +120,67 @@ class DocFileSystem {
     return true;
   }
 
-  remove(path) {
-    if (path.endsWith("/")) path = path.slice(0, -1);
+  recycle(path) {
     if (this.get(path) === undefined)
       return false;
+    let isDir = path.endsWith("/");
+    if (isDir) path = path.slice(0, -1);
+    let p = new Path(path);
+    let ops = [
+      {
+        p: ["root", ...p.jpath, "recycled"],
+        oi: true
+      },
+      {
+        p: ["indices", isDir ? (p.path + "/") : p.path, "recycled"],
+        oi: true
+      }
+    ];
+    this.doc.submitOp(ops);
+    return true;
+  }
+
+  restore(path) {
+    if (this.get(path) === undefined)
+      return false;
+    let isDir = path.endsWith("/");
+    if (isDir) path = path.slice(0, -1);
+    let p = new Path(path);
+    let ops = [
+      {
+        p: ["root", ...p.jpath, "recycled"],
+        od: true,
+      },
+      {
+        p: ["indices", isDir ? (p.path + "/") : p.path, "recycled"],
+        od: true,
+      }
+    ];
+    this.doc.submitOp(ops);
+    return true;
+  }
+
+  remove(path) {
+    let item = this.get(path);
+    if (item === undefined)
+      return false;
+    let isDir = path.endsWith("/");
+    if (isDir) path = path.slice(0, -1);
     let p = new Path(path);
     let ops = [
       {
         p: ["root", ...p.jpath],
-        od: this.get(path)
+        od: item
       },
       {
-        p: ["indices", p.path],
-        od: this.get(path)
+        p: ["indices", isDir ? (p.path + "/") : p.path],
+        od: item
       }
     ];
-    if (this.get(path).id) {
+    if (item.id) {
       ops.push({
-        p: ["idPath", this.get(path).id],
-        od: path
+        p: ["idPath", item.id],
+        od: isDir ? (p.path + "/") : p.path
       })
     }
     this.doc.submitOp(ops);
@@ -259,4 +303,6 @@ DocFileSystem.recycleTemplate = {
   children: {}
 };
 
-module.exports = {DocFileSystem};
+var dfs = new DocFileSystem();
+
+module.exports = {DocFileSystem, dfs};

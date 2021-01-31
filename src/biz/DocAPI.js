@@ -33,4 +33,7 @@ export default class DocAPI extends API {
     static kick(doc, author) {
         return axios.delete(`http://${config.bizHost}/kick/${doc.id}/${author.id}?token=${DocAPI.token()}`);
     }
+    static search(keywords) {
+        return axios.get(`http://${config.bizHost}/batch/query/doc?token=${DocAPI.token()}&keywords=${keywords}`);
+    }
 }
