@@ -16,7 +16,7 @@
             />
             {{
               selected.item
-                ? (selected.type === "doc" ? selected.item.label + " - " : selected.item.sender + " - ")
+                ? (selected.type === "doc" ? selected.item.label + " - " : selected.item.to + " - ")
                 : ""
             }}
             {{ userInfo.name }} - Doc+
@@ -63,24 +63,12 @@
             </el-row>
           </div>
           <div class="scale full" style="width: 5px" @mousedown="getStartX"></div>
-          <el-main class="main" style="flex: 1; display: flex">
-            <Editor
-              v-if="
-                r &&
-                selected.item &&
-                selected.type === 'doc' &&
-                selected.item.children === undefined
-              "
-              :doc="selected.item"
-              :type="selected.item.type"
-            />
-            <Chat
-              v-if="r &&
-                selected.item &&
-                selected.type === 'chat'
-              "
-              :message="selected.item"
-            />
+          <el-main class="main" style="flex: 1; display: flex; margin-left: -5px; overflow-y: auto;">
+            <Tabs
+              :tabs="tabs"
+              :active="tabActive"
+              @tabSwitch="onTabSwitch"
+              @tabClosed="onTabClosed"/>
           </el-main>
         </el-container>
       </el-container>
@@ -98,12 +86,13 @@ import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
 import DragAlong from "@/components/DragAlong";
 import Welcome from "@/components/Welcome";
+import Tabs from "@/components/Tabs";
 import API from "../biz/API";
 import config from "../biz/config";
 
 export default {
   name: "DocManager",
-  components: { Editor, ToolBar, Aside, DragAlong, Chat, Welcome },
+  components: { Editor, ToolBar, Aside, DragAlong, Chat, Welcome, Tabs },
   provide() {
     return {
       getAsideWidth: () => this.aside.width
@@ -167,6 +156,8 @@ export default {
         width: 300,
         resizeEnabled: false,
       },
+      tabActive: 0,
+      tabs: {}
     };
   },
   methods: {
@@ -212,29 +203,41 @@ export default {
       }
     },
     onFileSelected(selected) {
-      this.selected = selected;
-      this.selected.type = "doc";
-      if (this.selected.item && this.selected.cursor.children === undefined) {
+      // this.selected = selected;
+      // this.selected.type = "doc";
+      this.$set(this, "tabActive", "doc-" + selected.item.id)
+      this.$set(this.tabs, "doc-" + selected.item.id, {
+        tabType: "doc",
+        data: selected.item
+      });
+      if (selected.item && selected.cursor.children === undefined) {
         if (this.toolbar.menu.indexOf("share") === -1) {
           this.toolbar.menu.splice(1, 0, "share");
         }
-        let item = this.selected.item;
-        if (item.type === "code") {
-          let names = item.label.split(".");
-          let suffix = names[names.length - 1];
-          if (config.suffix[suffix]) suffix = config.suffix[suffix];
-          this.top.indicator = suffix + "代码";
-        } else {
-          this.top.indicator = item.type + "文档";
-        }
-        this._refresh();
+        // let item = this.selected.item;
+        // if (item.type === "code") {
+        //   let names = item.label.split(".");
+        //   let suffix = names[names.length - 1];
+        //   if (config.suffix[suffix]) suffix = config.suffix[suffix];
+        //   this.top.indicator = suffix + "代码";
+        // } else {
+        //   this.top.indicator = item.type + "文档";
+        // }
+        // this._refresh();
       }
+    },
+    onTabSwitch(k, tabType, id) {
+      this.tabActive = k;
+    },
+    onTabClosed(k, tabType, id) {
+      this.$delete(this.tabs, k);
+      let keys = Object.keys(this.tabs);
+      this.tabActive = keys[keys.length - 1];
     },
     onDraggedOrDropped(drag) {
       this.drag = drag;
     },
     dropAtRoot() {
-      console.log("drop at root");
       this.drag.showAlong = false;
       this.drag.item = null;
     },
@@ -246,8 +249,13 @@ export default {
       }
     },
     onChatSelected(msg) {
-      this.selected.item = msg;
-      this.selected.type = "chat";
+      // this.selected.item = msg;
+      // this.selected.type = "chat";
+      this.$set(this, "tabActive", "chat-" + msg.id)
+      this.$set(this.tabs, "chat-" + msg.id, {
+        tabType: "chat",
+        data: msg
+      });
     },
     renameComplete() {
       this._refresh();

@@ -133,7 +133,7 @@ export default {
     next() {
       this.submittingInfo = true;
       if (this.step === 0) {        
-        if (!/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(this.input.email)) {
+        if (!/^[\.a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(this.input.email)) {
           this.shakeSomething("input-e")
           this.$message({
             type: "error",

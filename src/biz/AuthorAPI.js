@@ -25,4 +25,7 @@ export default class AuthorAPI {
             nickname, email, password
         })
     }
+    static getAuthorById(id) {
+        return axios.get(`http://${config.bizHost}/author/${id}`);
+    }
 }

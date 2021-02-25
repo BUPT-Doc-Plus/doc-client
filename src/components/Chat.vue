@@ -1,47 +1,49 @@
 <template>
-  <div id="chat-box" class="full" style="width: 100%">
-    <div id="record-box" v-if="rr" class="record-box" :style="`height: ${getRecordBoxHeight()}px; overflow: auto`">
-      <div
-        :class="'forward forward-' + record.forward"
-        v-for="(record, key) in message.records"
-        :key="key"
-      >
-        <!-- <i v-show="!record.forward" class="el-icon-user" /> -->
-        <el-card :class="'card-' + (record.forward ? 'send' : 'recv')">
-          <span style="white-space: pre-wrap">{{ record.msg }}</span>
-        </el-card>
-        <!-- <i v-show="record.forward" class="el-icon-user" /> -->
+  <div style="flex: 1; display: flex;" >
+    <div id="chat-box" class="full" style="width: 100%;">
+      <div id="record-box" v-if="rr" class="record-box" :style="`height: ${getRecordBoxHeight()}px; overflow: auto`">
+        <div
+          :class="'forward forward-' + (record.sender.id === sender.id ? 1 : 0)"
+          v-for="(record, key) in chat.records"
+          :key="key"
+        >
+          <!-- <i v-show="!record.forward" class="el-icon-user" /> -->
+          <el-card :class="'card-' + ((record.sender.id === sender.id) ? 'send' : 'recv')">
+            <span class="ql-editor" style="white-space: pre-wrap; padding-left: 0; padding-right: 0;" v-html="record.msg"></span>
+          </el-card>
+          <!-- <i v-show="record.forward" class="el-icon-user" /> -->
+        </div>
       </div>
-    </div>
-    <div
-      id="chat-input"
-      :style="`position: absolute; bottom: 10px; left: ${getAsideWidth() + 50}px; right: 0px;`"
-    >
-      <div>
-        <quill-editor
-          ref="rich-chat-editor"
-          v-model="text"
-          @keydown.exact.shift.native="shift = true"
-          @keyup.exact.shift.native="shift = false"
-          @keyup.exact.enter.native="handleEnter()"
-          :options="{ placeholder: '' }"
-        ></quill-editor>
-        <div class="tool-bar">
-          <div class="bar-l">
-            <span
-              ><i
-                @click="switchMode()"
-                :style="`color: ${mode === 'plain' ? '#666' : '#66c'};`"
-                >A</i
-              ></span
-            >
-            <span><i>☺</i></span>
-            <span><i class="el-icon-share" /></span>
-          </div>
-          <div class="bar-r">
-            <span
-              ><i class="el-icon-s-promotion" @click="sendMessage()"
-            /></span>
+      <div
+        id="chat-input"
+        style="height: auto; padding-top: 10px;"
+      >
+        <div>
+          <quill-editor
+            ref="rich-chat-editor"
+            v-model="text"
+            @keydown.exact.shift.native="shift = true"
+            @keyup.exact.shift.native="shift = false"
+            @keydown.exact.enter.native="handleEnter()"
+            :options="{ placeholder: '' }"
+          ></quill-editor>
+          <div class="tool-bar">
+            <div class="bar-l">
+              <span
+                ><i
+                  @click="switchMode()"
+                  :style="`color: ${mode === 'plain' ? '#666' : '#66c'};`"
+                  >A</i
+                ></span
+              >
+              <span><i>☺</i></span>
+              <span><i class="el-icon-share" /></span>
+            </div>
+            <div class="bar-r">
+              <span
+                ><i class="el-icon-s-promotion" @click="sendMessage()"
+              /></span>
+            </div>
           </div>
         </div>
       </div>
@@ -51,9 +53,12 @@
 
 <script>
 import { quillEditor } from "vue-quill-editor";
+import API from '../biz/API';
+import AuthorAPI from '../biz/AuthorAPI';
+import { ChatClient } from "../client/ChatClient";
 
 export default {
-  props: ["message"],
+  props: ["chat"],
   inject: ["getAsideWidth"],
   components: {
     quillEditor,
@@ -66,8 +71,31 @@ export default {
       toolbar: null,
       mode: "plain",
       msgText: "",
-      shift: false
+      shift: false,
+      reverse: false,
+      sender: null,
+      receiver: null,
     };
+  },
+  created() {
+    window.onresize = (e) => {
+      this._refreshRecordBox(true);
+    }
+    window.onkeyup = (e) => {
+      if (e.keyCode === 13) {
+        console.log("enter up");
+        this.quill.enable();
+        this.quill.focus();
+      }
+    }
+    this.rr = false;
+    API.currentUser().then((resp) => {
+      this.sender = API.user;
+      this.$nextTick(() => {
+        this.rr = true;
+      })
+      this.receiver = this.chat.initiator.id === this.sender.id ? this.chat.recipient : this.chat.initiator;
+    });
   },
   mounted() {
     var quill = this.$refs["rich-chat-editor"].quill;
@@ -102,23 +130,26 @@ export default {
       }
     },
     handleEnter() {
-      if (!this.shift &&this.mode === "plain") {
-        this.sendMessage();
+      if (!this.shift && this.mode === "plain") {
+        this.sendMessage(true);
+        this.quill.disable();
       }
     },
-    sendMessage() {
-      let message = this.quill.getText();
-      if (message.endsWith("\n")) {
-        message = message.slice(0, -1);
+    sendMessage(byEnter=false) {
+      let message = this.quill.container.firstChild.innerHTML;
+      if (byEnter && message.endsWith("<p><br></p>")) {
+        message = message.slice(0, -11);
       }
-      if (message.trim() === "") {
+      if (message.length === 0 || message === "<p><br></p>") {
         this.$message({
           type: "error",
           message: "不能发送空消息",
         });
         this.text = "";
       } else {
-        this.message.records.push({ forward: 1, msg: message });
+        let parsedMessage = this.parseMessage(message);
+        ChatClient.send(parsedMessage);
+        this.chat.records.push(parsedMessage);
         this.text = "";
       }
       this._refreshRecordBox(false, "bottom");
@@ -144,13 +175,21 @@ export default {
     },
     getRecordBoxHeight() {
       try {
-        let chatBoxHeight = document.getElementById("chat-box").clientHeight;
         let chatInputHeight = document.getElementById("chat-input").clientHeight;
-        let result = chatBoxHeight - chatInputHeight - 50;
+        let result = document.body.clientHeight - chatInputHeight - 80;
         return result;
       } catch (err) {
         this._refreshRecordBox(true);
         return 1;
+      }
+    },
+    parseMessage(msg) {
+      return {
+        chat_id: this.chat.id,
+        sender: this.sender,
+        receiver: this.receiver,
+        msg: msg,
+        time: Date.now()
       }
     }
   },
@@ -158,6 +197,11 @@ export default {
 </script>
 
 <style scoped>
+.ql-editor {
+  height: auto;
+  max-height: 250px;
+  overflow: auto;
+}
 .forward {
   display: flex;
   align-items: center;

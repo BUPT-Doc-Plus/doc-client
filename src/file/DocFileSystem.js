@@ -7,6 +7,7 @@ if (ReconnectingWebSocket === undefined) {
   ReconnectingWebSocket = require("reconnecting-websocket");
 }
 const {Path} = require("./Path");
+const {abs} = require("../util/digest");
 
 class DocFileSystem {
   constructor(RECONNECT_OPS = null) {
@@ -66,7 +67,7 @@ class DocFileSystem {
 
   touch(path, data) {
     if (!path.endsWith("/")) path += "/";
-    let p = new Path(path + data.label + "-" + data.id);
+    let p = new Path(path + abs(data.label + "-" + data.id));
     if (this.get(p.path) !== undefined)
       return false;
     let parent = this.get(path);

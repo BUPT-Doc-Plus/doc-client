@@ -11,6 +11,9 @@
       :options="{ collaborate: '设为协作者', read: '设为读者', remove: '移除所有权限'}"
       :fileOptionCallback="optionCallback"
     />
+    <div class="btns">
+      <el-button type="info">生成邀请链接</el-button>
+    </div>
   </div>
 </template>
 
@@ -19,6 +22,8 @@ import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
 import AuthorAPI from "../biz/AuthorAPI";
 import DocAPI from "../biz/DocAPI";
+import { ChatClient } from '../client/ChatClient';
+import API from '../biz/API';
 
 export default {
   props: ["doc"],
@@ -26,11 +31,15 @@ export default {
     TreeForm,
   },
   created() {
+    API.currentUser().then((resp) => {
+      this.user = API.user;
+    })
     this.init(this.doc);
   },
   data() {
     return {
       r: true,
+      user: null,
       trees: null,
       search: {
         keywords: "",
@@ -62,6 +71,7 @@ export default {
     optionCallback(op, item) {
       let opsFn = {
         collaborate: () => {
+          ChatClient.send({ receiver: item, sender: this.user, msg: `邀请您加入文档"${this.doc.label}"`, time: Date.now() });
           return DocAPI.invite(this.doc, item, 1).then((resp) => {
             this.$message({
               type: "success",
@@ -135,5 +145,12 @@ export default {
 }
 .search-box .el-input__inner {
   border-radius: 0;
+}
+.info {
+  color: #666;
+}
+.btns {
+  display: flex;
+  justify-content: center;
 }
 </style>

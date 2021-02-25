@@ -63,6 +63,7 @@ import axios from "axios";
 import DocAPI from "../biz/DocAPI";
 import API from "../biz/API";
 import getRecycledFromTree from "../util/recycled";
+import { abs } from '../util/digest';
 
 export default {
   props: ["recycled"],
@@ -147,7 +148,7 @@ export default {
         () => {
           if (this.recycled) {
             getRecycledFromTree(dfs.doc.data.root, (node) => {
-              this.trees.children[node.label + "-" + node.id] = node;
+              this.trees.children[abs(node.label + "-" + node.id)] = node;
             })
           } else {
             this.trees = dfs.doc.data.root;
@@ -157,7 +158,7 @@ export default {
         (op, source) => {
           if (this.recycled) {
             getRecycledFromTree(dfs.doc.data.root, (node) => {
-              this.trees.children[node.label + "-" + node.id] = node;
+              this.trees.children[abs(node.label + "-" + node.id)] = node;
             })
           } else {
             this.trees = dfs.doc.data.root;
@@ -258,7 +259,7 @@ export default {
         DocAPI.createDoc(label, type, API.user.id).then((resp) => {
           if (resp.data.error === 0) {
             dfs.touch(p.path, resp.data.data);
-            let item = dfs.get(p.path + resp.data.data.label + "-" + resp.data.data.id);
+            let item = dfs.get(p.path + abs(resp.data.data.label + "-" + resp.data.data.id));
             this.selected.cursor = item;
             this.selected.item = item;
             this.fileOptionCallback("rename", item);

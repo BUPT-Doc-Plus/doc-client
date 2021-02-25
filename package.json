@@ -4,19 +4,24 @@
   "description": "frontend of doc plus",
   "author": "Liadrinz <435438602@qq.com>",
   "private": true,
+  "main": "main.js",
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
     "lint": "eslint --ext .js,.vue src",
     "build": "node build/build.js",
-    "unittest": "mocha unittest.js"
+    "unittest": "mocha unittest.js",
+    "electron:build": "vue-cli-service electron:build",
+    "electron:serve": "vue-cli-service electron:serve"
   },
   "dependencies": {
     "axios": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^0.21.0",
     "bufferutil": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^4.0.2",
+    "crypto": "^1.0.1",
     "diff": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^5.0.0",
     "element-ui": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^2.13.2",
     "file-loader": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.1.11",
+    "hotkeys-js": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^3.8.2",
     "markdown-it": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^12.0.1",
     "mocha": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^8.2.1",
     "ot-text": "D:\\github\\BUPT-Doc-Plus\\doc-client>\"D:\\nodejs\\\\node.exe\"  \"D:\\nodejs\\\\node_modules\\npm\\bin\\npm-cli.js\" config get save-prefix \r\n^1.0.2",

@@ -6,7 +6,11 @@ export default class API {
         return localStorage.getItem("token")
     }
     static currentUser() {
-        return axios.get(`http://${config.bizHost}/reveal/?token=${API.token()}`);
+        if (API.user === undefined)
+            return axios.get(`http://${config.bizHost}/reveal/?token=${API.token()}`);
+        else return new Promise((resolve) => {
+            resolve({data: {data: API.user}});
+        })
     }
     static revealToken(token) {
         return axios.get(`http://${config.bizHost}/reveal/?token=${token}`);

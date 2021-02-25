@@ -17,6 +17,7 @@
 <script>
 import TreeForm from "@/components/TreeForm";
 import DocAPI from '../biz/DocAPI';
+import { abs } from '../util/digest';
 
 export default {
   components: {
@@ -68,7 +69,7 @@ export default {
         DocAPI.search(this.search.keywords).then((resp) => {
           this.trees.children.result.children = {};
           for (let doc of resp.data.data) {
-            this.trees.children.result.children[doc.label + "-" + doc.id] = doc;
+            this.trees.children.result.children[abs(doc.label + "-" + doc.id)] = doc;
           }
           this._refreshTree();
         })
