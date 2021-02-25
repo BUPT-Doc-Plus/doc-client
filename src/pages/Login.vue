@@ -45,6 +45,7 @@
             placeholder="密码"
             :disabled="submittingInfo"
           ></el-input>
+          <el-button v-show="step === 1" type="text">忘记密码</el-button>
           <el-input
             ref="input-a"
             :class="inputClassName['input-a']"

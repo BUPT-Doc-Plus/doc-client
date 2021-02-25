@@ -35,10 +35,8 @@
           :suppress="k != active"
         />
         <Chat
-          v-for="(tab, k) in getTabs(tabs, 'chat')"
-          :key="k"
-          v-show="k == active"
-          :chat="tab.data"
+          v-if="active && tabs[active].tabType === 'chat'"
+          :chat="tabs[active].data"
         />
       </el-main>
   </el-container>

@@ -10,7 +10,7 @@
         <b class="username">{{ theOther(chat.initiator, chat.recipient) }}</b>
         <span class="datetime">{{ new Date(chat.records[chat.records.length - 1].time).toTimeString().split(" ")[0] }}</span>
       </div>
-      <div class="preview">{{ chat.records[chat.records.length - 1].msg }}</div>
+      <div class="preview" v-html="chat.records[chat.records.length - 1].msg.replace(/\<.*?\>/g, '')"></div>
     </div>
   </div>
 </template>
