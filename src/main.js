@@ -4,18 +4,24 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 import ElementUi from 'element-ui'
-import contentmenu from 'v-contextmenu'
+import VueClipboard from 'vue-clipboard2'
 import 'element-ui/lib/theme-chalk/index.css'
 import 'v-contextmenu/dist/index.css'
+import API from './biz/API'
 
 Vue.use(ElementUi)
-Vue.use(contentmenu)
-Vue.config.productionTip = false
+Vue.use(VueClipboard)
+Vue.config.productionTip = () => {};
 
 /* eslint-disable no-new */
-new Vue({
-  el: '#app',
-  router,
-  components: {App},
-  template: '<App/>'
-})
+(async () => {
+
+  await API.currentUser();
+  new Vue({
+    el: '#app',
+    router,
+    components: {App},
+    template: '<App/>'
+  })
+  
+})()

@@ -12,7 +12,11 @@
       @loaded="onFolderLoaded"
       @selectedFileClosed="onSelectedFileClosed"
     />
-    <Message v-show="page === 'chat-line-square'" @selectChat="chatSelected"/>
+    <Message
+      v-show="page === 'chat-line-square'"
+      @selectChat="chatSelected"
+      @message="data => {$emit('message', data)}"
+    />
     <Settings v-show="page === 'setting'"/>
   </div>
 </template>

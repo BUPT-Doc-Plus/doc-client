@@ -19,6 +19,11 @@ export default new Router({
       props: {
         inline: false
       }
+    },
+    {
+      path: '/invite/:docId/:token',
+      name: 'Invite',
+      component: DocManager
     }
   ]
 })

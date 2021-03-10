@@ -78,10 +78,7 @@ export default {
       }
       this.monacoLanguage = suffix;
     }
-    API.currentUser().then((resp) => {
-      API.user = resp.data.data;
-      this.init();
-    });
+    this.init();
   },
   mounted() {
     for (let e of document.getElementsByClassName("ql-snow")) {

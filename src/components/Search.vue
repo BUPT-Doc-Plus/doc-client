@@ -9,7 +9,6 @@
       :folder="trees"
       :select="select"
       :selected="selectedDoc"
-      :fileOptionCallback="optionCallback"
     />
   </div>
 </template>
@@ -47,7 +46,6 @@ export default {
   },
   methods: {
     _refreshTree() {
-      // this.trees = sortTree(this.trees);
       this.r = false;
       this.$nextTick(() => {
         this.r = true;

@@ -9,4 +9,7 @@ export default class ChatAPI extends API {
     static getChatById(chatId) {
         return axios.get(`http://${config.bizHost}/chat/${chatId}?token=${ChatAPI.token()}`);
     }
+    static getRecords(chat_id, page, pageSize) {
+        return axios.get(`http://${config.bizHost}/get_records?token=${ChatAPI.token()}&chat_id=${chat_id}&page=${page}&page_size=${pageSize}`);
+    }
 }

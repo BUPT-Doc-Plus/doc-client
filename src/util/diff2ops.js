@@ -26,13 +26,11 @@ function _getLineNumbersAndColumns(lineLengths, sortedPositions) {
 }
 
 function cursorOffset(oldCode, ops, currentPosition) {
-    console.log(oldCode, ops, currentPosition);
     let offset = 0;
     let { lineNumber, column } = currentPosition;
     let lineLengths = oldCode.split("\n").map(line => line.length);
     let position = 0;
     let posDeltaMap = {};
-    console.log(ops);
     for (let i = 0; i < ops.length; ++i) {
         if (ops[i].retain) {
             position += ops[i].retain;
@@ -67,6 +65,5 @@ function cursorOffset(oldCode, ops, currentPosition) {
 // var ops = [{ retain: 2 }, { insert: "1" }];
 // var currentPosition = { lineNumber: 1, column: 8 }
 // var offset = cursorOffset(oldCode, ops, currentPosition)
-// console.log(offset);
 
 module.exports = { diff2Ops, cursorOffset };

@@ -9,8 +9,12 @@ export default class DocAPI extends API {
             { label, type }
         )
     }
-    static getDoc(docId) {
-        return axios.get(`http://${config.bizHost}/doc/${docId}?token=${DocAPI.token()}`)
+    static getDoc(docId, code=null) {
+        let requrl = `http://${config.bizHost}/doc/${docId}?token=${DocAPI.token()}`;
+        if (code !== null) {
+            requrl += "&code=" + code;
+        }
+        return axios.get(requrl);
     }
     static rename(doc, newName) {
         doc.label = newName;
@@ -35,5 +39,13 @@ export default class DocAPI extends API {
     }
     static search(keywords) {
         return axios.get(`http://${config.bizHost}/batch/query/doc?token=${DocAPI.token()}&keywords=${keywords}`);
+    }
+    static genInviteLink(docId, auth) {
+        return axios.get(`http://${config.bizHost}/get_invite_link/?token=${DocAPI.token()}&doc_id=${docId}&auth=${auth}`);
+    }
+    static batchDelete(docIds) {
+        return axios.post(`http://${config.bizHost}/batch/delete/doc?token=${DocAPI.token()}`, {
+            ids: docIds
+        })
     }
 }

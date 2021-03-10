@@ -46,6 +46,7 @@
 import Editor from "@/components/Editor";
 import Chat from "@/components/Chat";
 import API from '../biz/API';
+import DocAPI from '../biz/DocAPI';
 
 export default {
   props: ["tabs", "active"],
@@ -57,9 +58,7 @@ export default {
     }
   },
   created() {
-    API.currentUser().then(() => {
-      this.user = API.user;
-    })
+    this.user = API.user;
   },
   methods: {
     _refresh() {

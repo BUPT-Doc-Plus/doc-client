@@ -54,7 +54,7 @@ export default {
         );
       }
       this.allUsers = JSON.parse(localStorage.getItem("allUsers"));
-    });
+    })
   },
   data() {
     return {
@@ -94,7 +94,7 @@ export default {
       });
     },
     switchAccount(item) {
-      this.$confirm(`确定切换到用户"${item.data.nickname} - ${item.data.email}"?`, "删除用户", {
+      this.$confirm(`确定切换到用户"${item.data.nickname} - ${item.data.email}"?`, "切换用户", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
         type: "warning",

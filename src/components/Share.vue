@@ -1,5 +1,9 @@
 <template>
-  <div>
+  <div
+    class="full"
+    v-loading="loading"
+    element-loading-text="正在加载"
+    element-loading-background="rgba(243, 243, 243, 1)">
     <div class="search-box">
       <el-input v-model="search.keywords" placeholder="搜索协作用户" @input="onSearchInput"></el-input>
     </div>
@@ -8,11 +12,28 @@
       v-if="r"
       :folder="trees"
       :select="select"
-      :options="{ collaborate: '设为协作者', read: '设为读者', remove: '移除所有权限'}"
-      :fileOptionCallback="optionCallback"
     />
-    <div class="btns">
-      <el-button type="info">生成邀请链接</el-button>
+    <div>
+      <div style="margin: 0.5rem;">
+        <el-input v-model="link.read">
+          <template slot="prepend">
+            只读
+          </template>
+          <template slot="append">
+            <el-button @click="copyLink(link.read)"><i class="el-icon-document-copy"/></el-button>
+          </template>
+        </el-input>
+      </div>
+      <div style="margin: 0.5rem;">
+        <el-input v-model="link.coll">
+          <template slot="prepend">
+            协作
+          </template>
+          <template slot="append">
+            <el-button @click="copyLink(link.coll)"><i class="el-icon-document-copy"/></el-button>
+          </template>
+        </el-input>
+      </div>
     </div>
   </div>
 </template>
@@ -31,24 +52,26 @@ export default {
     TreeForm,
   },
   created() {
-    API.currentUser().then((resp) => {
-      this.user = API.user;
-    })
+    this.user = API.user;
     this.init(this.doc);
   },
   data() {
     return {
+      loading: true,
       r: true,
       user: null,
       trees: null,
       search: {
         keywords: "",
       },
+      link: {
+        read: "",
+        coll: "",
+      }
     };
   },
   methods: {
     _refreshTree() {
-      // this.trees = sortTree(this.trees);
       this.init();
       this.r = false;
       this.$nextTick(() => {
@@ -57,11 +80,12 @@ export default {
     },
     init(doc) {
       if (doc) {
-        Tree.getShare(doc, this.trees ? this.trees.children.result.children : undefined).then((data) => {
+        Tree.getShare(doc).then((data) => {
           this.trees = data;
           this.trees.children.collaborate.label = `"${doc.label}"的协作者`;
           this.trees.children.read.label = `"${doc.label}"的读者`;
           this._refreshTree();
+          this.genInviteLink();
         })
       }
     },
@@ -129,6 +153,23 @@ export default {
       } else {
         this.trees.children.result.children = [];
       }
+    },
+    genInviteLink() {
+      DocAPI.genInviteLink(this.doc.id, "read").then((resp) => {
+        this.link.read = resp.data.data;
+        DocAPI.genInviteLink(this.doc.id, "collaborate").then((resp) => {
+          this.link.coll = resp.data.data;
+          this.loading = false;
+        })
+      });
+    },
+    copyLink(link) {
+      this.$copyText(link).then(() => {
+        this.$message({
+          type: "success",
+          message: "已复制链接"
+        })
+      })
     }
   },
   watch: {
@@ -139,7 +180,7 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .search-box {
   padding: 5px;
 }

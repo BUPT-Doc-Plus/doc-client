@@ -7,76 +7,41 @@
         :key="idx"
         @mouseleave="unreadyToDrop ? unreadyToDrop(item) : () => {}"
       >
-        <v-contextmenu
-          class="ctx"
-          ref="contextmenu"
-          @contextmenu="onContextMenu"
-        >
-          <v-contextmenu-item
-            v-for="(op, key) in options"
-            :key="key"
-            @click="fileOptionCallback(key, context.item)"
-          >
-            <div class="option" v-if="m">
-              <div class="option-l">{{ op.split(",")[0] }}</div>
-              <div class="option-r">{{ op.split(",")[1] }}</div>
-            </div>
-          </v-contextmenu-item>
-        </v-contextmenu>
         <span
-          v-if="!item.nonContext && !(item.recycled ^ recycled)"
-          v-contextmenu:contextmenu
+          v-if="!(item.recycled ^ recycled)"
           :class="'item' + (item.cut ? ' item-cut' : '')"
           :data="{ item }"
           @click="select(item)"
-          @mousedown="dragging ? dragging(item) : () => {}"
-          @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
-          @mouseup="dropping ? dropping(item) : () => {}"
+          @mouseover="() => {$set(item, 'showAfterSlot', true)}"
+          @mouseleave="() => {$set(item, 'showAfterSlot', false)}"
+          style="display: flex; align-items: center; justify-content: space-between;"
         >
-          <span
-            v-show="item.children"
-            :class="`folder-${item.show ? 1 : 0} folder-state`"
-            >&gt;</span
-          >
-          <div class="fname">
-            <span v-show="!item.children" class="file-0 folder-state`"
-              ><i :class="icon"
-            /></span>
-            <span v-show="!item.renaming">{{ item.label }}</span>
-            <span v-show="item.renaming" class="rn-box">
-              <el-input
-                v-model="item.label"
-                @keyup.enter.native="submitRename(item)"
-              ></el-input>
+          <span @click.stop>
+            <slot name="before" :data="{ item, idx }"></slot>
+            <span @click="select(item)">
+              <span
+                v-show="item.children"
+                :class="`folder-${item.show ? 1 : 0} folder-state`"
+                >&gt;</span
+              >
+              <div class="fname">
+                <span v-show="!item.children" class="file-0 folder-state`"
+                  ><i :class="icon"
+                /></span>
+                <span v-show="!item.renaming">{{ item.label }}</span>
+                <span v-show="item.renaming" class="rn-box">
+                  <slot name="rename" :data="{ item, idx }"></slot>
+                  <!-- <el-input
+                    v-model="item.label"
+                    @keyup.enter.native="submitRename(item)"
+                  ></el-input> -->
+                </span>
+              </div>
             </span>
-          </div>
-        </span>
-        <span
-          v-if="item.nonContext"
-          :class="'item' + (item.cut ? ' item-cut' : '')"
-          :data="{ item }"
-          @click="select(item)"
-          @mousedown="dragging ? dragging(item) : () => {}"
-          @mouseenter="readyToDrop ? readyToDrop(item) : () => {}"
-          @mouseup="dropping ? dropping(item) : () => {}"
-        >
-          <span
-            v-show="item.children"
-            :class="`folder-${item.show ? 1 : 0} folder-state`"
-            >&gt;</span
-          >
-          <div class="fname">
-            <span v-show="!item.children" class="file-0 folder-state`"
-              ><i class="el-icon-notebook-2"
-            /></span>
-            <span v-show="!item.renaming">{{ item.label }}</span>
-            <span v-show="item.renaming" class="rn-box">
-              <el-input
-                v-model="item.label"
-                @keyup.enter.native="submitRename(item)"
-              ></el-input>
-            </span>
-          </div>
+          </span>
+          <span @click.stop>
+            <slot name="after" :data="{ item, idx }"></slot>
+          </span>
         </span>
         <TreeForm
           v-if="item.show"
@@ -89,10 +54,23 @@
           :unreadyToDrop="unreadyToDrop"
           :layer="layer + 1"
           :selected="selected"
-          :fileOptionCallback="fileOptionCallback"
-          :options="options"
-          @renameComplete="renameComplete"
-        />
+        >
+          <template slot="before" slot-scope="scope">
+            <slot
+              name="before"
+              :data="{ item: scope.data.item, idx: scope.data.idx }"></slot>
+          </template>
+          <template slot="after" slot-scope="scope">
+            <slot
+              name="after"
+              :data="{ item: scope.data.item, idx: scope.data.idx }"></slot>
+          </template>
+          <template slot="rename" slot-scope="scope">
+            <slot
+              name="rename"
+              :data="{ item: scope.data.item, idx: scope.data.idx }"></slot>
+          </template>
+        </TreeForm>
       </li>
     </ul>
     <div v-if="layer === 0" style="height: 2rem"></div>
@@ -111,8 +89,6 @@ export default {
     "readyToDrop",
     "unreadyToDrop",
     "layer",
-    "fileOptionCallback",
-    "options",
     "recycled"
   ],
   name: "TreeForm",
@@ -120,10 +96,6 @@ export default {
     return {
       r: true,
       m: true,
-      context: {
-        folder: null,
-        item: null,
-      }
     };
   },
   methods: {
@@ -139,19 +111,9 @@ export default {
         this.m = true;
       });
     },
-    onContextMenu(e) {
-      let { item } = e.data.attrs.data;
-      this.context.item = item;
-    },
-    submitRename(item) {
-      let prevName = item.label;
-      item.renaming = false;
-      this._refreshTree();
-      this.renameComplete(item);
-    },
-    renameComplete(item) {
-      this.$emit("renameComplete", item);
-    },
+    handleCheckbox(item) {
+      
+    }
   },
 };
 </script>
@@ -163,11 +125,11 @@ export default {
 }
 .tree-inner {
   border-left: 1px solid #aaa;
-  padding-left: 1em;
+  padding-left: 9px;
   margin-top: 0;
 }
 .tree {
-  padding-left: 0.5em;
+  padding-left: 10px;
 }
 .itembox {
   display: block;
@@ -243,5 +205,8 @@ export default {
   display: flex;
   padding-left: 20px;
   justify-content: flex-end;
+}
+.el-checkbox__label {
+  display: none;
 }
 </style>

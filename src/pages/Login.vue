@@ -178,12 +178,11 @@ export default {
           });
       } else if (this.step === 1) {
         AuthorAPI.login(this.input.email, this.input.password)
-          .then((resp) => {
+          .then(async (resp) => {
             if (!this.inline) {
               localStorage.setItem("token", resp.data.data);
-              API.currentUser().then((u) => {
-                this._replaceTokenInStoredAccount(u.data.data, resp.data.data);
-              })
+              let u = await API.currentUser();
+              this._replaceTokenInStoredAccount(u.data.data, resp.data.data);
               this.$router.replace({ path: "/" });
             } else {
               this.$emit("complete", resp.data.data)

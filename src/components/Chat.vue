@@ -1,10 +1,21 @@
 <template>
   <div style="flex: 1; display: flex;" >
+    <div v-if="loading" class="lb welcome back">
+      <span id="t-5">■</span>
+      <span id="t-6">■</span>
+      <span id="t-7">■</span>
+      <span id="t-8">■</span>
+      <span id="t-9">■</span>
+      <span id="t-10">■</span>
+      <span id="t-11">■</span>
+      <span id="t-12">■</span>
+    </div>
     <div id="chat-box" class="full" style="width: 100%;">
-      <div id="record-box" v-if="rr" class="record-box" :style="`height: ${getRecordBoxHeight()}px; overflow: auto`">
+      <div
+        id="record-box" v-if="rr" class="record-box" :style="`height: ${getRecordBoxHeight()}px; overflow: auto`">
         <div
           :class="'forward forward-' + (record.sender.id === sender.id ? 1 : 0)"
-          v-for="(record, key) in chat.records"
+          v-for="(record, key) in p.records"
           :key="key"
         >
           <!-- <i v-show="!record.forward" class="el-icon-user" /> -->
@@ -55,7 +66,8 @@
 import { quillEditor } from "vue-quill-editor";
 import API from '../biz/API';
 import AuthorAPI from '../biz/AuthorAPI';
-import { ChatClient } from "../client/ChatClient";
+import ChatAPI from '../biz/ChatAPI';
+import { ChatClient } from '../client/ChatClient';
 
 export default {
   props: ["chat"],
@@ -75,6 +87,13 @@ export default {
       reverse: false,
       sender: null,
       receiver: null,
+      p: {
+        records: [],
+        initPage: 0,
+        page: 0,
+        pageSize: 10,
+      },
+      loading: true,
     };
   },
   created() {
@@ -83,19 +102,42 @@ export default {
     }
     window.onkeyup = (e) => {
       if (e.keyCode === 13) {
-        console.log("enter up");
         this.quill.enable();
         this.quill.focus();
       }
     }
     this.rr = false;
-    API.currentUser().then((resp) => {
-      this.sender = API.user;
+    this.sender = API.user;
+    this.$nextTick(() => {
+      this.rr = true;
+    })
+    this.receiver = this.chat.initiator.id === this.sender.id ? this.chat.recipient : this.chat.initiator;
+    ChatClient.addHandler((data) => {
+      this._refreshRecordBox();
+    })
+    ChatAPI.getRecords(this.chat.id, this.p.page, this.p.pageSize).then((resp) => {
+      this.p.records = resp.data.data;
       this.$nextTick(() => {
-        this.rr = true;
+        document.getElementById("record-box").scroll(0, 1e+9);
       })
-      this.receiver = this.chat.initiator.id === this.sender.id ? this.chat.recipient : this.chat.initiator;
-    });
+      this.loading = false;
+      document.getElementById("record-box").onscroll = (e) => {
+        if (document.getElementById("record-box").scrollTop === 0 && this.p.records.length < this.chat.records.length) {
+          this.loading = true;
+          let prevScrollHeight = document.getElementById("record-box").scrollHeight;
+          ChatAPI.getRecords(this.chat.id, this.p.page + 1, this.p.pageSize).then((resp) => {
+            this.p.page += 1;
+            let records = this.p.records;
+            records.unshift(...resp.data.data);
+            this.p.records = records;
+            this.loading = false;
+            this.$nextTick(() => {
+              document.getElementById("record-box").scroll(0, document.getElementById("record-box").scrollHeight - prevScrollHeight - 100)
+            })
+          })
+        }
+      };
+    })
   },
   mounted() {
     var quill = this.$refs["rich-chat-editor"].quill;
@@ -125,6 +167,22 @@ export default {
           this.$nextTick(() => {
             rb = document.getElementById("record-box");
             rb.scroll(0, scroll);
+            document.getElementById("record-box").onscroll = (e) => {
+              if (document.getElementById("record-box").scrollTop === 0 && this.p.records.length < this.chat.records.length) {
+                this.loading = true;
+                let prevScrollHeight = document.getElementById("record-box").scrollHeight;
+                ChatAPI.getRecords(this.chat.id, this.p.page + 1, this.p.pageSize).then((resp) => {
+                  this.p.page += 1;
+                  let records = this.p.records;
+                  records.unshift(...resp.data.data);
+                  this.p.records = records;
+                  this.loading = false;
+                  this.$nextTick(() => {
+                    document.getElementById("record-box").scroll(0, document.getElementById("record-box").scrollHeight - prevScrollHeight - 100)
+                  })
+                })
+              }
+            };
           })
         })
       }
@@ -149,7 +207,7 @@ export default {
       } else {
         let parsedMessage = this.parseMessage(message);
         ChatClient.send(parsedMessage);
-        this.chat.records.push(parsedMessage);
+        this.p.records.push(parsedMessage);
         this.text = "";
       }
       this._refreshRecordBox(false, "bottom");
@@ -261,5 +319,50 @@ export default {
 }
 .record-box {
   border-bottom: 1px solid rgba(102, 102, 102, .1);
+}
+.welcome {
+  position: absolute;
+  z-index: -1;
+  user-select: none;
+  display: flex;
+}
+.title {
+  font-size: 100px;
+}
+.lb {
+  font-size: 15px;
+  justify-content: center;
+  color: rgb(168, 131, 255);
+}
+.back {
+  transform: translate(-100px, -10px);
+}
+#t-5 {
+  animation: fly 3.2s infinite 1.4s;
+}
+#t-6 {
+  animation: fly 3.2s infinite 1.2s;
+}
+#t-7 {
+  animation: fly 3.2s infinite 1.0s;
+}
+#t-8 {
+  animation: fly 3.2s infinite 0.8s;
+}
+#t-9 {
+  animation: fly 3.2s infinite 0.6s;
+}
+#t-10 {
+  animation: fly 3.2s infinite 0.4s;
+}
+#t-11 {
+  animation: fly 3.2s infinite 0.2s;
+}
+#t-12 {
+  animation: fly 3.2s infinite 0.0s;
+}
+@keyframes fly {
+  0% { transform: translate(0px, 0px); }
+  100% { transform: translate(2000px, 0px); }
 }
 </style>

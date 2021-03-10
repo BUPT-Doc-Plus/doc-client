@@ -28,33 +28,25 @@
           >
             <el-row class="full" @click="handleClickAside()">
               <el-col class="tool-bar full" style="width: 50px">
-                <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" />
+                <ToolBar :menu="toolbar.menu" @menuChange="onMenuChange" :unread="chat.unread"/>
               </el-col>
               <el-col class="full" :span="20">
                 <el-aside
                   class="aside"
                   :style="`width: ${aside.width}px;`"
-                  @mouseup.native="dropAtRoot"
                 >
                   <el-row class="full">
                     <el-col class="full">
-                      <DragAlong
-                        v-if="drag.showAlong"
-                        :name="drag.item.label"
-                        :x="mouse.x"
-                        :y="mouse.y"
-                      />
                       <Aside
                         :page="asidePage"
                         ref="aside"
                         @fileSelected="onFileSelected"
-                        @fileDragged="onDraggedOrDropped"
-                        @fileDropped="onDraggedOrDropped"
                         @resultSelected="onResultSelected"
                         @chatSelected="onChatSelected"
                         @renameComplete="renameComplete"
                         @loaded="onAsideLoaded"
                         @selectedFileClosed="unselectDoc"
+                        @message="onMessageReceived"
                       />
                     </el-col>
                   </el-row>
@@ -84,33 +76,32 @@ import Editor from "@/components/Editor";
 import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
 import Aside from "@/components/Aside";
-import DragAlong from "@/components/DragAlong";
 import Welcome from "@/components/Welcome";
 import Tabs from "@/components/Tabs";
 import API from "../biz/API";
-import config from "../biz/config";
 
 export default {
   name: "DocManager",
-  components: { Editor, ToolBar, Aside, DragAlong, Chat, Welcome, Tabs },
+  components: { Editor, ToolBar, Aside, Chat, Welcome, Tabs },
   provide() {
     return {
       getAsideWidth: () => this.aside.width
     }
   },
   created() {
+    if(! ('Notification' in window) ){
+		alert('Sorry bro, your browser is not good enough to display notification');
+		return;
+		}
     if (localStorage.getItem("token") === null) {
       this.$router.push({ path: "/login/" });
       return;
     }
-    API.currentUser()
-      .then((resp) => {
-        this.userInfo.name = resp.data.data.nickname;
-        this.loadedFlags.reveal = true;
-      })
-      .catch((err) => {
-        this.$router.push({ path: "/login/" });
-      });
+    this.userInfo.name = API.user.nickname;
+    this.loadedFlags.reveal = true;
+    if (!API.user) {
+      this.$router.push({ path: "/login/" });
+    }
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
     window.onmousemove = (e) => {
@@ -142,11 +133,6 @@ export default {
         name: "",
       },
       trees: null,
-      drag: {
-        folder: null,
-        item: null,
-        showAlong: false,
-      },
       selected: {
         type: "doc",
         item: null,
@@ -157,7 +143,10 @@ export default {
         resizeEnabled: false,
       },
       tabActive: 0,
-      tabs: {}
+      tabs: {},
+      chat: {
+        unread: 0
+      }
     };
   },
   methods: {
@@ -205,12 +194,12 @@ export default {
     onFileSelected(selected) {
       // this.selected = selected;
       // this.selected.type = "doc";
-      this.$set(this, "tabActive", "doc-" + selected.item.id)
-      this.$set(this.tabs, "doc-" + selected.item.id, {
-        tabType: "doc",
-        data: selected.item
-      });
       if (selected.item && selected.cursor.children === undefined) {
+        this.$set(this, "tabActive", "doc-" + selected.item.id)
+        this.$set(this.tabs, "doc-" + selected.item.id, {
+          tabType: "doc",
+          data: selected.item
+        });
         if (this.toolbar.menu.indexOf("share") === -1) {
           this.toolbar.menu.splice(1, 0, "share");
         }
@@ -233,13 +222,11 @@ export default {
       this.$delete(this.tabs, k);
       let keys = Object.keys(this.tabs);
       this.tabActive = keys[keys.length - 1];
-    },
-    onDraggedOrDropped(drag) {
-      this.drag = drag;
-    },
-    dropAtRoot() {
-      this.drag.showAlong = false;
-      this.drag.item = null;
+      this.$nextTick(() => {
+        if (Object.keys(this.tabs).length == 0 && this.toolbar.menu.indexOf("share") !== -1) {
+          this.toolbar.menu.splice(1, 1);
+        }
+      })
     },
     onResultSelected(folder, item) {
       this.selected.item = item;
@@ -248,9 +235,10 @@ export default {
         this.toolbar.menu.splice(1, 0, "share");
       }
     },
-    onChatSelected(msg) {
+    onChatSelected(msg, unreadDelta) {
       // this.selected.item = msg;
       // this.selected.type = "chat";
+      this.chat.unread -= unreadDelta;
       this.$set(this, "tabActive", "chat-" + msg.id)
       this.$set(this.tabs, "chat-" + msg.id, {
         tabType: "chat",
@@ -270,6 +258,10 @@ export default {
         if (percent === undefined) percent = 0;
         this.loadedFlags.percent = Math.round(percent * 100);
       }
+    },
+    onMessageReceived(data) {
+      ++this.chat.unread;
+      this._refresh();
     }
   },
 };
@@ -283,6 +275,7 @@ export default {
   font-weight: lighter;
   color: rgb(41, 41, 41);
   background: rgb(221, 221, 221);
+  user-select: none;
 }
 .main {
   padding: 0;

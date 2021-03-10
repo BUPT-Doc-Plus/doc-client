@@ -95,13 +95,15 @@ class DocFileSystem {
     if (path.endsWith("/")) path = path.slice(0, -1);
     if (this.get(path) !== undefined) return false;
     let p = new Path(path);
+    let label = p.target;
+    p.target = abs(p.target + "-" + Date.now());
     if (this.get(p.parent.path) === undefined) {
       this.mkdir(p.parent.path);
     }
     if (p.target !== "") {
       let data = {
-        label: p.target,
-        path: path,
+        label: label,
+        path: p.path,
         creator: 1,
         children: {},
         collaborators: null,
@@ -203,6 +205,52 @@ class DocFileSystem {
     return true;
   }
 
+  move(src, dest) {
+    if (this.get(src) === undefined)
+      return false;
+    let [folder, file] = DocFileSystem.splitLast(src);
+    if (!dest.endsWith("/")) dest += "/";
+    if (this.get(dest) === undefined || this.get(dest).children === undefined)
+      return -1;
+    let flag = 0;
+    src = folder + file;
+    let destFile = dest + file;
+    if (this.get(destFile) !== undefined) {
+      flag = 1;
+    }
+    if (src === destFile) {
+      return 0;
+    }
+    let ops = [
+      {
+        p: ["root", ...new Path(destFile).jpath],
+        oi: this.get(src)
+      },
+      {
+        p: ["root", ...new Path(destFile).jpath, "path"],
+        oi: destFile
+      },
+      {
+        p: ["indices", destFile],
+        oi: this.get(src)
+      },
+      {
+        p: ["indices", destFile, "path"],
+        oi: destFile
+      },
+    ];
+    if (this.get(src).id) {
+      ops.push({
+        p: ["idPath", this.get(src).id],
+        oi: destFile
+      })
+    }
+    this.doc.submitOp(ops, null, () => {
+      this.remove(src);
+    });
+    return flag;
+  }
+
   paste(dest) {
     if (!dest.endsWith("/")) dest += "/";
     if (this.get(dest) === undefined || this.get(dest).children === undefined)
@@ -247,22 +295,31 @@ class DocFileSystem {
 
   rename(path, newName) {
     let p = new Path(path);
-    let newPath = p.parent.path + newName + (p._isDir ? "/" : "");
+    let newPath = p.parent.path + abs(newName) + (p._isDir ? "/" : "");
     if (this.get(newPath) !== undefined)
       return false;
     this.get(path).label = newName;
     this.get(path).path = newPath;
+    let np = new Path(newPath);
+    let destJPath = ["root", ...np.jpath];
+    let srcJPath = ["root", ...p.jpath];
+    if (destJPath[destJPath.length - 1] === "children") {
+      destJPath = destJPath.slice(0, -1)
+    }
+    if (srcJPath[srcJPath.length - 1] === "children") {
+      srcJPath = srcJPath.slice(0, -1)
+    }
     let ops = [
       {
-        p: ["root", ...new Path(newPath).jpath],
+        p: destJPath,
         oi: this.get(path)
       },
       {
-        p: ["indices", new Path(newPath).path],
+        p: ["indices", np.path],
         oi: this.get(path)
       },
       {
-        p: ["root", ...p.jpath],
+        p: srcJPath,
         od: this.get(path)
       },
       {
