@@ -1,15 +1,6 @@
 <template>
   <div style="flex: 1; display: flex;" >
-    <div v-if="loading" class="lb welcome back">
-      <span id="t-5">■</span>
-      <span id="t-6">■</span>
-      <span id="t-7">■</span>
-      <span id="t-8">■</span>
-      <span id="t-9">■</span>
-      <span id="t-10">■</span>
-      <span id="t-11">■</span>
-      <span id="t-12">■</span>
-    </div>
+    <LoadingBar v-if="loading" index="-1"/>
     <div id="chat-box" class="full" style="width: 100%;">
       <div
         id="record-box" v-if="rr" class="record-box" :style="`height: ${getRecordBoxHeight()}px; overflow: auto`">
@@ -68,12 +59,13 @@ import API from '../biz/API';
 import AuthorAPI from '../biz/AuthorAPI';
 import ChatAPI from '../biz/ChatAPI';
 import { ChatClient } from '../client/ChatClient';
+import LoadingBar from "./LoadingBar";
 
 export default {
   props: ["chat"],
   inject: ["getAsideWidth"],
   components: {
-    quillEditor,
+    quillEditor, LoadingBar
   },
   data() {
     return {
@@ -113,7 +105,12 @@ export default {
     })
     this.receiver = this.chat.initiator.id === this.sender.id ? this.chat.recipient : this.chat.initiator;
     ChatClient.addHandler((data) => {
-      this._refreshRecordBox();
+      if (data.sender.id !== API.user.id) {
+        this.p.records.push(data);
+        this.$nextTick(() => {
+          this._refreshRecordBox(false, "bottom");
+        })
+      }
     })
     ChatAPI.getRecords(this.chat.id, this.p.page, this.p.pageSize).then((resp) => {
       this.p.records = resp.data.data;
@@ -319,50 +316,5 @@ export default {
 }
 .record-box {
   border-bottom: 1px solid rgba(102, 102, 102, .1);
-}
-.welcome {
-  position: absolute;
-  z-index: -1;
-  user-select: none;
-  display: flex;
-}
-.title {
-  font-size: 100px;
-}
-.lb {
-  font-size: 15px;
-  justify-content: center;
-  color: rgb(168, 131, 255);
-}
-.back {
-  transform: translate(-100px, -10px);
-}
-#t-5 {
-  animation: fly 3.2s infinite 1.4s;
-}
-#t-6 {
-  animation: fly 3.2s infinite 1.2s;
-}
-#t-7 {
-  animation: fly 3.2s infinite 1.0s;
-}
-#t-8 {
-  animation: fly 3.2s infinite 0.8s;
-}
-#t-9 {
-  animation: fly 3.2s infinite 0.6s;
-}
-#t-10 {
-  animation: fly 3.2s infinite 0.4s;
-}
-#t-11 {
-  animation: fly 3.2s infinite 0.2s;
-}
-#t-12 {
-  animation: fly 3.2s infinite 0.0s;
-}
-@keyframes fly {
-  0% { transform: translate(0px, 0px); }
-  100% { transform: translate(2000px, 0px); }
 }
 </style>

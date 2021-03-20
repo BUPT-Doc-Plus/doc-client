@@ -9,10 +9,37 @@
     </div>
     <TreeForm
       icon="el-icon-user"
-      v-if="r"
+      
       :folder="trees"
       :select="select"
-    />
+    >
+      <template slot="after" slot-scope="scope">
+        <span v-if="scope.data.item.id !== undefined">
+          <span v-show="getRoleOfItem(user) !== 2 && scope.data.item.id !== user.id" class="slot-after">
+            <i
+              v-show="getRoleOfItem(scope.data.item) !== 1"
+              class="el-icon-edit-outline icon"
+              title="邀请协作"
+              @click="optionCallback('collaborate', scope.data.item)"/>
+            <i
+              v-show="getRoleOfItem(scope.data.item) !== 0"
+              class="el-icon-view icon"
+              title="邀请阅读"
+              @click="optionCallback('read', scope.data.item)"/>
+            <i
+              v-show="getRoleOfItem(scope.data.item) !== -1"
+              class="el-icon-delete icon"
+              title="移除权限"
+              @click="optionCallback('remove', scope.data.item)"/>
+          </span>
+          <span>
+            <span v-show="getRoleOfItem(scope.data.item) === 2">[创建者]</span>
+            <span 
+              v-show="getRoleOfItem(scope.data.item) !== 2 && scope.data.item.id === user.id">[自己]</span>
+          </span>
+        </span>
+      </template>
+    </TreeForm>
     <div>
       <div style="margin: 0.5rem;">
         <el-input v-model="link.read">
@@ -79,11 +106,9 @@ export default {
       });
     },
     init(doc) {
-      if (doc) {
+      if (doc && doc.children === undefined) {
         Tree.getShare(doc).then((data) => {
           this.trees = data;
-          this.trees.children.collaborate.label = `"${doc.label}"的协作者`;
-          this.trees.children.read.label = `"${doc.label}"的读者`;
           this._refreshTree();
           this.genInviteLink();
         })
@@ -155,13 +180,17 @@ export default {
       }
     },
     genInviteLink() {
-      DocAPI.genInviteLink(this.doc.id, "read").then((resp) => {
-        this.link.read = resp.data.data;
-        DocAPI.genInviteLink(this.doc.id, "collaborate").then((resp) => {
-          this.link.coll = resp.data.data;
-          this.loading = false;
-        })
-      });
+      if (this.doc !== undefined) {
+        DocAPI.genInviteLink(this.doc.id, "read").then((resp) => {
+          this.link.read = resp.data.data;
+          if (this.doc !== undefined) {
+            DocAPI.genInviteLink(this.doc.id, "collaborate").then((resp) => {
+              this.link.coll = resp.data.data;
+              this.loading = false;
+            })
+          }
+        });
+      }
     },
     copyLink(link) {
       this.$copyText(link).then(() => {
@@ -170,6 +199,13 @@ export default {
           message: "已复制链接"
         })
       })
+    },
+    getRoleOfItem(item) {
+      if (this.doc !== undefined) {
+        let accs = item.author_accessible.filter(e => e.doc_id == this.doc.id);
+        if (accs.length === 0) return -1;
+        return accs[0].role;
+      }
     }
   },
   watch: {
@@ -193,5 +229,11 @@ export default {
 .btns {
   display: flex;
   justify-content: center;
+}
+.icon {
+  cursor: pointer;
+}
+.icon:hover {
+  color: #aaa;
 }
 </style>

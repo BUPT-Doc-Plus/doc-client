@@ -34,25 +34,32 @@
         <div v-show="!recycled" class="el-dropdown" title="新建文件夹">
           <span><i class="el-icon-folder-add" @click="newFolder" /></span>
         </div>
-        <el-dropdown v-show="!recycled" @command="handleOperation">
+        <el-dropdown @command="handleOperation">
           <span><i class="el-icon-menu" /></span>
           <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item command="copy" :disabled="multiselect.length === 0">
+            <el-dropdown-item v-show="!recycled" command="copy" :disabled="multiselect.length === 0">
               <i class="el-icon-document-copy"/>复制
               </el-dropdown-item>
-            <el-dropdown-item command="cut" :disabled="multiselect.length === 0">
+            <el-dropdown-item v-show="!recycled" command="cut" :disabled="multiselect.length === 0">
               <i class="el-icon-scissors"/>剪切
               </el-dropdown-item>
-            <el-dropdown-item command="paste" :disabled="clipboard.items.length === 0">
+            <el-dropdown-item v-show="!recycled" command="paste" :disabled="clipboard.items.length === 0">
               <i class="el-icon-document"/>粘贴
               </el-dropdown-item>
-            <el-dropdown-item command="delete" :disabled="multiselect.length === 0">
-              <i class="el-icon-delete"/>删除
+            <el-dropdown-item v-show="!recycled" command="recycle" :disabled="multiselect.length === 0">
+              <i class="el-icon-delete"/>移至回收站
+              </el-dropdown-item>
+            <el-dropdown-item v-show="recycled" command="restore" :disabled="multiselect.length === 0">
+              <i class="el-icon-refresh-left"/>还原
+              </el-dropdown-item>
+            <el-dropdown-item v-show="recycled" command="delete" :disabled="multiselect.length === 0">
+              <i class="el-icon-delete"/>彻底删除
               </el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
       </div>
     </div>
+    <LoadingBar v-if="loadingTask > 0" index="9999"/>
     <div style="overflow: scroll; height: 96%">
       <TreeForm
         @click.stop.native
@@ -60,14 +67,10 @@
         icon="el-icon-notebook-2"
         :path="['children']"
         :folder="trees"
-        :recycled="recycled"
         :select="select"
         :selected="selected.cursor"
-        :dragging="dragging"
-        :dropping="dropping"
-        :readyToDrop="readyToDrop"
-        :unreadyToDrop="unreadyToDrop"
         :blurRename="blur"
+        :recycled="recycled"
       >
         <template slot="before" slot-scope="scope">
           <el-checkbox
@@ -76,7 +79,7 @@
             @change="handleCheckbox(scope.data.item)"/>
         </template>
         <template slot="after" slot-scope="scope">
-          <span class="slot-after" v-show="scope.data.item.showAfterSlot">
+          <span v-show="!recycled" class="slot-after">
             <i
               v-show="!scope.data.item.renaming"
               class="el-icon-edit icon"
@@ -95,13 +98,27 @@
             <i
               v-show="!scope.data.item.renaming"
               class="el-icon-delete icon"
-              title="删除"
+              title="移至回收站"
+              @click="singleRecycle(scope.data.item)"/>
+          </span>
+          <span v-show="recycled" class="slot-after">
+            <i
+              v-show="!scope.data.item.renaming"
+              class="el-icon-refresh-left icon"
+              title="还原"
+              @click="singleRestore(scope.data.item)"/>
+            <i
+              v-show="!scope.data.item.renaming"
+              class="el-icon-delete icon"
+              title="彻底删除"
               @click="singleDelete(scope.data.item)"/>
           </span>
         </template>
         <template slot="rename" slot-scope="scope">
           <el-input
+            class="rn-input"
             v-model="renaming.buffer"
+            @keydown.enter.native="singleRename(scope.data.item)"
           ></el-input>
         </template>
       </TreeForm>
@@ -110,21 +127,16 @@
 </template>
 
 <script>
-import Tree from "../entity/Tree";
 import TreeForm from "@/components/TreeForm";
-import hotkeys from "hotkeys-js";
 import { dfs } from "../file/DocFileSystem";
 import { Path } from "../file/Path";
-import axios from "axios";
 import DocAPI from "../biz/DocAPI";
 import API from "../biz/API";
-import getRecycledFromTree from "../util/recycled";
-import { abs } from '../util/digest';
-import { countKeyVal } from '../util/tree';
+import LoadingBar from "./LoadingBar";
 
 export default {
   props: ["recycled"],
-  components: { TreeForm },
+  components: { TreeForm, LoadingBar },
   created() {
     this.connectToDFS();
   },
@@ -158,6 +170,7 @@ export default {
       },
       trees: { children: {} },
       loadingFileTree: true,
+      loadingTask: 0,
     };
   },
   methods: {
@@ -167,23 +180,11 @@ export default {
       dfs.connect(
         API.user.id,
         () => {
-          if (this.recycled) {
-            getRecycledFromTree(dfs.doc.data.root, (node) => {
-              this.trees.children[abs(node.label + "-" + node.id)] = node;
-            })
-          } else {
-            this.trees = dfs.doc.data.root;
-          }
+          this.trees = dfs.doc.data.root;
           this.selected.cursor = dfs.doc.data.root;
         },
         (op, source) => {
-          if (this.recycled) {
-            getRecycledFromTree(dfs.doc.data.root, (node) => {
-              this.trees.children[abs(node.label + "-" + node.id)] = node;
-            })
-          } else {
-            this.trees = dfs.doc.data.root;
-          }
+          this.trees = dfs.doc.data.root;
           this.$emit("loaded", dfs.doc.data.loaded);
           if (dfs.doc.data.loaded === true) {
             this._refreshTree();
@@ -216,6 +217,7 @@ export default {
       item.show = !item.show;
       this.selected.cursor = item;
       if (item.children === undefined) this.selected.item = item;
+      this._refreshTree();
       this.$emit("fileSelected", this.selected);
     },
     dragging(item) {
@@ -251,6 +253,7 @@ export default {
       this.drag.showAlong = false;
     },
     newDocument(type) {
+      ++this.loadingTask;
       let p;
       if (this.selected.cursor) {
         p = new Path(this.selected.cursor.path);
@@ -260,27 +263,32 @@ export default {
         let label = "newCode";
         DocAPI.createDoc(label, type, API.user.id).then((resp) => {
           if (resp.data.error === 0) {
-            dfs.touch(p.path, resp.data.data);
+            dfs.touch(p.path, resp.data.data, () => {
+              --this.loadingTask;
+            });
           } else {
-            this.$meesage({
+            this.$message({
               type: "error",
               message: resp.data.data,
             });
+            --this.loadingTask;
           }
         });
       } else {
         let label = "新建文档";
         DocAPI.createDoc(label, type, API.user.id).then((resp) => {
           if (resp.data.error === 0) {
-            dfs.touch(p.path, resp.data.data);
-            let item = dfs.get(p.path + abs(resp.data.data.label + "-" + resp.data.data.id));
-            this.selected.cursor = item;
-            this.selected.item = item;
+            dfs.touch(p.path, resp.data.data, (path) => {
+              let item = dfs.get(path);
+              this.select(item);
+              --this.loadingTask;
+            });
           } else {
             this.$meesage({
               type: "error",
               message: resp.data.data,
             });
+            --this.loadingTask;
           }
         });
       }
@@ -298,15 +306,11 @@ export default {
         })
         return;
       }
-      let label = "新建文件夹",
-        suffix = 0;
-      while (dfs.get(p.path + label) !== undefined) {
-        label = "新建文件夹" + "-" + ++suffix;
-      }
-      dfs.mkdir(p.path + "/" + label);
-      let item = dfs.get(p.path + "/" + label);
-      this.selected.cursor = item;
-      this.selected.item = item;
+      let label = "新建文件夹";
+      dfs.mkdir(p.path + "/" + label, (path) => {
+        let item = dfs.get(path);
+        this.select(item);
+      });
     },
     renameComplete(item) {
       if (item.children === undefined) {
@@ -323,9 +327,11 @@ export default {
       this.cancelRename();
     },
     cancelRename() {
-      this.renaming.item.renaming = false;
-      this.renaming.item = null;
-      this._refreshTree();
+      if (this.renaming.item) {
+        this.renaming.item.renaming = false;
+        this.renaming.item = null;
+        this._refreshTree();
+      }
     },
     handleCheckbox(item) {
       if (item.selected) {
@@ -334,22 +340,96 @@ export default {
         this.multiselect.splice(this.multiselect.indexOf(item), 1);
       }
     },
+    batchRecycle() {
+      this.$confirm("确认移至回收站?", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        this.loadingTask += this.multiselect.length;
+        this.multiselect.forEach(item => {
+          dfs.recycle(item.path, () => {
+            item.selected = false;
+            if (--this.loadingTask === 0) {
+              this.multiselect = [];
+              this.$message({
+                type: "success",
+                message: "已移至回收站"
+              });
+            }
+          });
+        })
+      })
+    },
+    singleRecycle(item) {
+      this.$confirm("确认移至回收站?", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        ++this.loadingTask;
+        dfs.recycle(item.path, () => {
+          this.$message({
+            type: "success",
+            message: "已移至回收站"
+          });
+          --this.loadingTask;
+        });
+      })
+    },
+    batchRestore() {
+      this.$confirm("确认全部还原?", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        this.loadingTask += this.multiselect.length;
+        this.multiselect.forEach(item => {
+          dfs.restore(item.path, () => {
+            item.selected = false;
+            if (--this.loadingTask === 0) {
+              this.multiselect = [];
+              this.$message({
+                type: "success",
+                message: "已还原"
+              });
+            }
+          });
+        })
+      })
+    },
+    singleRestore(item) {
+      ++this.loadingTask;
+      dfs.restore(item.path, () => {
+        this.$message({
+          type: "success",
+          message: "已还原"
+        });
+        --this.loadingTask;
+      })
+    },
     batchDelete() {
       this.$confirm("确认删除?", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
         type: "warning",
       }).then(() => {
+        this.loadingTask += this.multiselect.length;
         DocAPI.batchDelete(
           this.multiselect.filter(e => e.id !== undefined).map(e => e.id))
         .then(() => {
-          this.$message({
-            type: "success",
-            message: "删除成功"
+          this.multiselect.forEach(item => {
+            dfs.remove(item.path, () => {
+              item.selected = false;
+              if (--this.loadingTask === 0) {
+                this.multiselect = [];
+                this.$message({
+                  type: "success",
+                  message: "删除成功"
+                })
+              }
+            });
           })
-          for (let item of this.multiselect) {
-            dfs.remove(item.path);
-          }
         });
       })
     },
@@ -361,11 +441,12 @@ export default {
       }).then(() => {
         if (item.id) {
           DocAPI.batchDelete([item.id]).then(() => {
-            this.$message({
-              type: "success",
-              message: "删除成功"
+            dfs.remove(item.path, () => {
+              this.$message({
+                type: "success",
+                message: "删除成功"
+              });
             });
-            dfs.remove(item.path);
           }).catch(() => {
             this.$message({
               type: "error",
@@ -426,6 +507,11 @@ export default {
         this.renaming.buffer = item.label;
         this.renaming.item = item;
         item.renaming = true;
+        this._refreshTree();
+        setTimeout(() => {
+          document.querySelector(".rn-input").querySelector("input").focus();
+          document.querySelector(".rn-input").querySelector("input").select();
+        })
       } else {
         if (item.children === undefined) {
           DocAPI.rename(item, this.renaming.buffer).then((resp) => {
@@ -437,8 +523,8 @@ export default {
         this.$emit("renameComplete", item);
         this.renaming.item = null;
         item.renaming = false;
+        this._refreshTree();
       }
-      this._refreshTree();
     },
     handleOperation(type) {
       if (type === "copy") {
@@ -447,11 +533,15 @@ export default {
         this.batchCut();
       } else if (type === "paste") {
         this.batchPaste();
+      } else if (type === "recycle") {
+        this.batchRecycle();
       } else if (type === "delete") {
         this.batchDelete();
+      } else if (type === "restore") {
+        this.batchRestore();
       }
     }
-  },
+  }
 };
 </script>
 

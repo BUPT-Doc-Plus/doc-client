@@ -12,9 +12,6 @@
           :class="'item' + (item.cut ? ' item-cut' : '')"
           :data="{ item }"
           @click="select(item)"
-          @mouseover="() => {$set(item, 'showAfterSlot', true)}"
-          @mouseleave="() => {$set(item, 'showAfterSlot', false)}"
-          style="display: flex; align-items: center; justify-content: space-between;"
         >
           <span @click.stop>
             <slot name="before" :data="{ item, idx }"></slot>
@@ -28,18 +25,16 @@
                 <span v-show="!item.children" class="file-0 folder-state`"
                   ><i :class="icon"
                 /></span>
-                <span v-show="!item.renaming">{{ item.label }}</span>
+                <span v-show="!item.renaming" class="fn-box" :title="item.label">
+                  {{ item.label }}
+                </span>
                 <span v-show="item.renaming" class="rn-box">
                   <slot name="rename" :data="{ item, idx }"></slot>
-                  <!-- <el-input
-                    v-model="item.label"
-                    @keyup.enter.native="submitRename(item)"
-                  ></el-input> -->
                 </span>
               </div>
             </span>
           </span>
-          <span @click.stop>
+          <span @click.stop style="float: right; padding-right: 10px;">
             <slot name="after" :data="{ item, idx }"></slot>
           </span>
         </span>
@@ -54,6 +49,7 @@
           :unreadyToDrop="unreadyToDrop"
           :layer="layer + 1"
           :selected="selected"
+          :recycled="recycled"
         >
           <template slot="before" slot-scope="scope">
             <slot
@@ -89,7 +85,7 @@ export default {
     "readyToDrop",
     "unreadyToDrop",
     "layer",
-    "recycled"
+    "recycled",
   ],
   name: "TreeForm",
   data() {
@@ -142,6 +138,7 @@ export default {
   color: #666;
   font-family: "Consolas";
   background: none;
+  white-space: nowrap;
 }
 .item-cut {
   color: rgba(102, 102, 102, 0.5);
@@ -173,6 +170,13 @@ export default {
 }
 .ctx {
   user-select: none;
+}
+.fn-box {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .rn-box {
   display: inline-block;
@@ -207,6 +211,12 @@ export default {
   justify-content: flex-end;
 }
 .el-checkbox__label {
+  display: none;
+}
+.item:hover .slot-after {
+  display: block;
+}
+.slot-after {
   display: none;
 }
 </style>

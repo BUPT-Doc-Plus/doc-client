@@ -12,62 +12,11 @@ export default class Tree {
     }
   }
 
-  static connectTree(userId) {
-    return {
-      children: {
-        "算法": {
-          id: 1,
-          label: "算法",
-          creator: 1,
-          collaborators: null,
-          show: false,
-          children: {
-            "动态规划": {id: 2, label: "动态规划", type: "rich-text", creator: 1, collaborators: [2, 3]},
-            "二叉树": {id: 3, label: "二叉树", type: "rich-text", creator: 1, collaborators: [2, 3]},
-          }
-        },
-        "计算机网络": {
-          id: 4,
-          label: "计算机网络",
-          creator: 1,
-          collaborators: null,
-          show: false,
-          children: {
-            "七层协议": {
-              id: 7, label: "七层协议", creator: 1, collaborators: null, show: false, children: {
-                "TCP协议": {id: 5, label: "TCP协议", type: "rich-text", creator: 1, collaborators: [2, 3]},
-                "HTTP协议": {id: 6, label: "HTTP协议", type: "rich-text", creator: 1, collaborators: [2, 3]},
-              }
-            }
-          }
-        }
-      }
-    };
-  }
-
-  static getRecycled(userId) {
-    return new Tree({
-      children: [
-        {
-          label: "回收站",
-          show: true,
-          children: [
-            {
-              label: "Hello, world",
-              type: "markdown"
-            },
-            {
-              label: "你好世界",
-              type: "markdown"
-            }
-          ]
-        }
-      ]
+  static getShare(doc, cache=true) {
+    let cachePromise = new Promise((resolve) => {
+      resolve(Tree.cache[doc.id]);
     });
-  }
-
-  static getShare(doc, searchResultCache) {
-    return DocAPI.getDoc(doc.id).then((resp) => {
+    let loadPromise = DocAPI.getDoc(doc.id).then((resp) => {
       doc = resp.data.data;
       let collaborate = [], read = [];
       let accessible = doc.doc_accessible;
@@ -82,61 +31,36 @@ export default class Tree {
           collaborate.push(acc);
         }
       }
-      return new Tree({
+      let result = new Tree({
         children: {
           result: {
             label: "搜索结果",
             show: true,
             nonContext: true,
-            children: searchResultCache ? searchResultCache : []
+            children: []
           },
           collaborate: {
-            label: "",
+            label: `协作者`,
             show: true,
             nonContext: true,
             children: collaborate
           },
           read: {
-            label: "",
+            label: `阅读者`,
             show: true,
             nonContext: true,
             children: read
           }
         }
-      })
+      });
+      Tree.cache[doc.id] = result;
+      return result;
     })
-  }
-
-  static getSearch() {
-    return new Tree({
-      children: [
-        {
-          label: "搜索结果",
-          show: true,
-          nonContext: true,
-          children: [
-            {
-              id: 2,
-              label: "需求文档",
-              type: "rich-text"
-            },
-            {
-              id: 3,
-              label: "设计文档",
-              type: "rich-text"
-            },
-            {
-              id: 4,
-              label: "评审文档",
-              type: "rich-text"
-            }
-          ]
-        }
-      ]
-    })
+    if (cache && Tree.cache[doc.id] !== undefined) {
+      return cachePromise;
+    } else {
+      return loadPromise;
+    }
   }
 }
-Tree.url = {
-  document: "ws://localhost:8088/tree/document/",
-}
-Tree.session = {};
+Tree.cache = {};

@@ -19,7 +19,7 @@
         <div
           :id="'monaco-box-' + doc.id"
           class="full"
-          style="border-right: 0.7px solid #bbb; display: flex; flex: 1"
+          style="display: flex; flex: 1; transform: translate(5px)"
           :span="12"
         >
           <MonacoEditor
@@ -132,6 +132,7 @@ export default {
           var quill = this.$refs["editor-" + this.doc.id].quill;
           quill.setContents(this.dc.doc.data);
           this.monacoEditor.setValue(quill.getText());
+          quill.format("user", API.user.id);
           quill.on("text-change", (delta, oldDelta, source) => {
             if (source !== quill && source !== "user") return;
             this.dc.doc.submitOp(delta, { source: quill });

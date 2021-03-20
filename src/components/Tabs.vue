@@ -11,13 +11,14 @@
         <div
           v-for="(tab, k) in tabs"
           :key="k"
-          :class="'tab' + (k == active ? ' active' : '')">
-          <span class="info" @click="switchTab(k, tab.tabType, tab.data.id)">
-            <span v-if="tab.tabType === 'doc'">
+          :class="'tab' + (k == active ? ' active' : '')"
+          @click="switchTab(k, tab.tabType, tab.data.id)">
+          <span class="info">
+            <span v-if="tab && tab.tabType === 'doc'">
               <i class="el-icon-notebook-2"/>
               {{ tab.data.label }}
             </span>
-            <span v-if="tab.tabType === 'chat'">
+            <span v-if="tab && tab.tabType === 'chat'">
               <i class="el-icon-chat-line-square"/>
               {{ theOther(tab.data.initiator, tab.data.recipient) }}
             </span>
@@ -35,7 +36,7 @@
           :suppress="k != active"
         />
         <Chat
-          v-if="active && tabs[active].tabType === 'chat'"
+          v-if="tabs[active] && tabs[active].tabType === 'chat'"
           :chat="tabs[active].data"
         />
       </el-main>
@@ -46,7 +47,6 @@
 import Editor from "@/components/Editor";
 import Chat from "@/components/Chat";
 import API from '../biz/API';
-import DocAPI from '../biz/DocAPI';
 
 export default {
   props: ["tabs", "active"],
@@ -101,10 +101,17 @@ export default {
   user-select: none;
 }
 
+.tab-container {
+  display: flex;
+}
+
 .tab {
+  flex: 1;
   display: flex;
   align-items: center;
-  width: 7rem;
+  position: relative;
+  width: auto;
+  min-width: 0;
   padding: 0 0.5rem;
   border: 1px solid rgba(102, 102, 102, .1);
   border-bottom: none;

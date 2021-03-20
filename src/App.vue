@@ -6,6 +6,7 @@
 
 <script>
 import API from './biz/API';
+
 export default {
   name: "App",
   provide() {

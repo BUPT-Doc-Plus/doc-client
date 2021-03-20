@@ -65,8 +65,8 @@ export default {
           }
           this.chatIdx[chat_id].unread++;
           this.totalUnread++;
-          this.chatIdx[chat_id].records.push(data);
         }
+        this.chatIdx[chat_id].preview = data;
       } else {
         ChatAPI.getChatById(chat_id).then((resp) => {
           this.chatIdx[chat_id] = resp.data.data;

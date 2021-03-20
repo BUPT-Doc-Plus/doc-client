@@ -18,6 +18,9 @@ class DocFileSystem {
       cut: false
     }
     this.RECONNECT_OPS = RECONNECT_OPS;
+    this.allowFields = [
+      "children", "collaborators", "creator", "label",
+      "path", "id", "recycled", "type", "doc_accessible", "show"];
   }
 
   connect(userId, connectedCallback = () => {
@@ -51,21 +54,28 @@ class DocFileSystem {
     this.socket = undefined;
   }
 
-  get(path) {
-    return this.doc.data.indices[path];
-    // if (path === "/") return this.doc.data.root;
-    // if (path.endsWith("/")) path = path.slice(0, -1);
-    // let jpath = new Path(path).jpath;
-    // let root = this.doc.data.root;
-    // for (let p of jpath) {
-    //   root = root[p];
-    //   if (root === undefined)
-    //     return root;
-    // }
-    // return root;
+  _trimRedundant(item) {
+    for (let key in item) {
+      if (this.allowFields.indexOf(key) === -1) {
+        delete item[key];
+      }
+    }
   }
 
-  touch(path, data) {
+  get(path) {
+    if (path === "/") return this.doc.data.root;
+    if (path.endsWith("/")) path = path.slice(0, -1);
+    let jpath = new Path(path).jpath;
+    let root = this.doc.data.root;
+    for (let p of jpath) {
+      root = root[p];
+      if (root === undefined)
+        return root;
+    }
+    return root;
+  }
+
+  touch(path, data, cb=()=>{}) {
     if (!path.endsWith("/")) path += "/";
     let p = new Path(path + abs(data.label + "-" + data.id));
     if (this.get(p.path) !== undefined)
@@ -74,24 +84,23 @@ class DocFileSystem {
     if (parent === undefined || parent.children === undefined)
       return false;
     data.path = p.path;
+    this._trimRedundant(data);
     this.doc.submitOp([
       {
         p: ["root", ...p.jpath],
         oi: data
       },
       {
-        p: ["indices", p.path],
-        oi: data
-      },
-      {
         p: ["idPath", data.id],
         oi: data
       }
-    ]);
+    ], null, () => {
+      cb(p.path);
+    });
     return true;
   }
 
-  mkdir(path) {
+  mkdir(path, cb=()=>{}) {
     if (path.endsWith("/")) path = path.slice(0, -1);
     if (this.get(path) !== undefined) return false;
     let p = new Path(path);
@@ -113,17 +122,15 @@ class DocFileSystem {
         {
           p: ["root", ...p.jpath],
           oi: data
-        },
-        {
-          p: ["indices", p.path],
-          oi: data
         }
-      ]);
+      ], null, () => {
+        cb(p.path);
+      });
     }
     return true;
   }
 
-  recycle(path) {
+  recycle(path, cb=()=>{}) {
     if (this.get(path) === undefined)
       return false;
     let isDir = path.endsWith("/");
@@ -135,15 +142,17 @@ class DocFileSystem {
         oi: true
       },
       {
-        p: ["indices", isDir ? (p.path + "/") : p.path, "recycled"],
-        oi: true
+        p: ["root", ...p.jpath, "selected"],
+        oi: false
       }
     ];
-    this.doc.submitOp(ops);
+    this.doc.submitOp(ops, null, () => {
+      cb(p.path);
+    });
     return true;
   }
 
-  restore(path) {
+  restore(path, cb=()=>{}) {
     if (this.get(path) === undefined)
       return false;
     let isDir = path.endsWith("/");
@@ -152,18 +161,20 @@ class DocFileSystem {
     let ops = [
       {
         p: ["root", ...p.jpath, "recycled"],
-        od: true,
+        oi: false
       },
       {
-        p: ["indices", isDir ? (p.path + "/") : p.path, "recycled"],
-        od: true,
+        p: ["root", ...p.jpath, "selected"],
+        oi: false
       }
     ];
-    this.doc.submitOp(ops);
+    this.doc.submitOp(ops, null, () => {
+      cb(p.path);
+    });
     return true;
   }
 
-  remove(path) {
+  remove(path, cb=()=>{}) {
     let item = this.get(path);
     if (item === undefined)
       return false;
@@ -174,10 +185,6 @@ class DocFileSystem {
       {
         p: ["root", ...p.jpath],
         od: item
-      },
-      {
-        p: ["indices", isDir ? (p.path + "/") : p.path],
-        od: item
       }
     ];
     if (item.id) {
@@ -186,26 +193,13 @@ class DocFileSystem {
         od: isDir ? (p.path + "/") : p.path
       })
     }
-    this.doc.submitOp(ops);
+    this.doc.submitOp(ops, null, () => {
+      cb(p.path);
+    });
     return true;
   }
 
-  copy(src) {
-    if (this.get(src) === undefined)
-      return false;
-    [this.clipboard.folder, this.clipboard.file] = DocFileSystem.splitLast(src);
-    return true;
-  }
-
-  cut(src) {
-    if (this.get(src) === undefined)
-      return false;
-    [this.clipboard.folder, this.clipboard.file] = DocFileSystem.splitLast(src);
-    this.clipboard.cut = true;
-    return true;
-  }
-
-  move(src, dest) {
+  move(src, dest, cb=()=>{}) {
     if (this.get(src) === undefined)
       return false;
     let [folder, file] = DocFileSystem.splitLast(src);
@@ -221,23 +215,16 @@ class DocFileSystem {
     if (src === destFile) {
       return 0;
     }
+    let dp = new Path(destFile);
     let ops = [
       {
-        p: ["root", ...new Path(destFile).jpath],
+        p: ["root", ...dp.jpath],
         oi: this.get(src)
       },
       {
-        p: ["root", ...new Path(destFile).jpath, "path"],
+        p: ["root", ...dp.jpath, "path"],
         oi: destFile
-      },
-      {
-        p: ["indices", destFile],
-        oi: this.get(src)
-      },
-      {
-        p: ["indices", destFile, "path"],
-        oi: destFile
-      },
+      }
     ];
     if (this.get(src).id) {
       ops.push({
@@ -246,60 +233,21 @@ class DocFileSystem {
       })
     }
     this.doc.submitOp(ops, null, () => {
-      this.remove(src);
+      this.remove(src, () => {
+        cb(dp.path);
+      });
     });
     return flag;
   }
 
-  paste(dest) {
-    if (!dest.endsWith("/")) dest += "/";
-    if (this.get(dest) === undefined || this.get(dest).children === undefined)
-      return -1;
-    let flag = 0;
-    let src = this.clipboard.folder + this.clipboard.file;
-    let destFile = dest + this.clipboard.file;
-    if (this.get(destFile) !== undefined) {
-      flag = 1;
-    }
-    let ops = [
-      {
-        p: ["root", ...new Path(destFile).jpath],
-        oi: this.get(src)
-      },
-      {
-        p: ["root", ...new Path(destFile).jpath, "path"],
-        oi: destFile
-      },
-      {
-        p: ["indices", destFile],
-        oi: this.get(src)
-      },
-      {
-        p: ["indices", destFile, "path"],
-        oi: destFile
-      },
-    ];
-    if (this.get(src).id) {
-      ops.push({
-        p: ["idPath", this.get(src).id],
-        oi: destFile
-      })
-    }
-    this.doc.submitOp(ops);
-    if (this.clipboard.cut) {
-      this.clipboard.cut = false;
-      this.remove(src);
-    }
-    return flag;
-  }
-
-  rename(path, newName) {
+  rename(path, newName, cb=()=>{}) {
     let p = new Path(path);
     let newPath = p.parent.path + abs(newName) + (p._isDir ? "/" : "");
     if (this.get(newPath) !== undefined)
       return false;
-    this.get(path).label = newName;
-    this.get(path).path = newPath;
+    this.get(p.path).label = newName;
+    this.get(p.path).path = newPath;
+    this._trimRedundant(this.get(p.path));
     let np = new Path(newPath);
     let destJPath = ["root", ...np.jpath];
     let srcJPath = ["root", ...p.jpath];
@@ -312,28 +260,22 @@ class DocFileSystem {
     let ops = [
       {
         p: destJPath,
-        oi: this.get(path)
-      },
-      {
-        p: ["indices", np.path],
-        oi: this.get(path)
+        oi: this.get(p.path)
       },
       {
         p: srcJPath,
-        od: this.get(path)
-      },
-      {
-        p: ["indices", p.path],
-        od: this.get(path)
+        od: this.get(p.path)
       }
     ];
-    if (this.get(path).id) {
+    if (this.get(p.path).id) {
       ops.push({
-        p: ["idPath", this.get(path).id],
-        oi: newPath
+        p: ["idPath", this.get(p.path).id],
+        oi: np.path
       })
     }
-    this.doc.submitOp(ops);
+    this.doc.submitOp(ops, null, () => {
+      cb(p.path);
+    });
     return true;
   }
 }

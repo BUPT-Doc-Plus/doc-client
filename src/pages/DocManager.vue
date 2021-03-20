@@ -4,21 +4,9 @@
       <el-container
         v-show="loadedFlags.reveal && loadedFlags.ws"
         class="full"
-        @mouseup.native="disableResizing"
-        @mousemove.native="resizeAside"
       >
         <el-header style="height: 30px" class="header">
           <div>
-            <i
-              v-if="selected.item && selected.item.children === undefined"
-              class="el-icon-circle-close"
-              @click="unselectDoc"
-            />
-            {{
-              selected.item
-                ? (selected.type === "doc" ? selected.item.label + " - " : selected.item.to + " - ")
-                : ""
-            }}
             {{ userInfo.name }} - Doc+
           </div>
         </el-header>
@@ -37,8 +25,9 @@
                 >
                   <el-row class="full">
                     <el-col class="full">
-                      <Aside
-                        :page="asidePage"
+                      <!-- 没有必要封装 -->
+                      <!-- <Aside
+                        :page="page"
                         ref="aside"
                         @fileSelected="onFileSelected"
                         @resultSelected="onResultSelected"
@@ -47,14 +36,33 @@
                         @loaded="onAsideLoaded"
                         @selectedFileClosed="unselectDoc"
                         @message="onMessageReceived"
-                      />
+                      /> -->
+                      <div class="aside full">
+                        <Share :doc="tabs[tabActive] && tabs[tabActive].data" v-show="page === 'share'" />
+                        <Search
+                          v-show="page === 'search'"
+                          @fileSelected="onFileSelected"/>
+                        <Folder
+                          v-show="page === 'delete' || page === 'folder'"
+                          :recycled="page === 'delete'"
+                          @fileSelected="onFileSelected"
+                          @renameComplete="renameComplete"
+                          @loaded="onAsideLoaded"
+                          @selectedFileClosed="unselectDoc"
+                        />
+                        <Message
+                          v-show="page === 'chat-line-square'"
+                          @selectChat="onChatSelected"
+                          @message="data => {$emit('message', data)}"
+                        />
+                        <Settings v-show="page === 'setting'"/>
+                      </div>
                     </el-col>
                   </el-row>
                 </el-aside>
               </el-col>
             </el-row>
           </div>
-          <div class="scale full" style="width: 5px" @mousedown="getStartX"></div>
           <el-main class="main" style="flex: 1; display: flex; margin-left: -5px; overflow-y: auto;">
             <Tabs
               :tabs="tabs"
@@ -75,14 +83,20 @@
 import Editor from "@/components/Editor";
 import Chat from "@/components/Chat";
 import ToolBar from "@/components/ToolBar";
-import Aside from "@/components/Aside";
+// import Aside from "@/components/Aside";
+import Folder from "@/components/Folder";
+import Share from "@/components/Share";
+import Search from "@/components/Search";
+import Message from "@/components/Message";
+import Settings from "@/components/Settings";
 import Welcome from "@/components/Welcome";
 import Tabs from "@/components/Tabs";
 import API from "../biz/API";
+import DocAPI from '../biz/DocAPI';
 
 export default {
   name: "DocManager",
-  components: { Editor, ToolBar, Aside, Chat, Welcome, Tabs },
+  components: { Editor, ToolBar, Chat, Welcome, Tabs, Folder, Share, Search, Message, Settings },
   provide() {
     return {
       getAsideWidth: () => this.aside.width
@@ -90,8 +104,8 @@ export default {
   },
   created() {
     if(! ('Notification' in window) ){
-		alert('Sorry bro, your browser is not good enough to display notification');
-		return;
+      alert('Sorry bro, your browser is not good enough to display notification');
+      return;
 		}
     if (localStorage.getItem("token") === null) {
       this.$router.push({ path: "/login/" });
@@ -104,10 +118,10 @@ export default {
     }
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
-    window.onmousemove = (e) => {
-      this.mouse.x = e.clientX;
-      this.mouse.y = e.clientY;
-    };
+    if (this.$route.name === "Invite") {
+      let { docId, token } = this.$route.params;
+      DocAPI.getDoc(docId, token);
+    }
   },
   data() {
     return {
@@ -118,7 +132,7 @@ export default {
         percent: 0
       },
       r: true,
-      asidePage: undefined,
+      page: "folder",
       top: {
         indicator: "",
       },
@@ -139,7 +153,7 @@ export default {
       },
       aside: {
         startX: 0,
-        width: 300,
+        width: 400,
         resizeEnabled: false,
       },
       tabActive: 0,
@@ -162,28 +176,8 @@ export default {
         this.wr = true;
       })
     },
-    getStartX(e) {
-      this.aside.startX = e.screenX;
-      this.aside.resizeEnabled = true;
-    },
-    resizeAside(e) {
-      if (!this.aside.resizeEnabled || e.screenX === 0) return;
-      this.aside.width += e.screenX - this.aside.startX;
-      if (this.aside.width < 300) {
-        this.aside.width = 300;
-        return;
-      } else if (this.aside.width > 700) {
-        this.aside.width = 700;
-        return;
-      }
-      this.aside.startX = e.screenX;
-    },
-    disableResizing(e) {
-      this.aside.resizeEnabled = false;
-      localStorage.setItem("asideWidth", this.aside.width);
-    },
     onMenuChange(sec) {
-      this.asidePage = sec;
+      this.page = sec;
     },
     unselectDoc() {
       this.selected.item = null;
@@ -192,8 +186,8 @@ export default {
       }
     },
     onFileSelected(selected) {
-      // this.selected = selected;
-      // this.selected.type = "doc";
+      this.selected = selected;
+      this.selected.type = "doc";
       if (selected.item && selected.cursor.children === undefined) {
         this.$set(this, "tabActive", "doc-" + selected.item.id)
         this.$set(this.tabs, "doc-" + selected.item.id, {
@@ -215,13 +209,15 @@ export default {
         // this._refresh();
       }
     },
-    onTabSwitch(k, tabType, id) {
+    onTabSwitch(k) {
       this.tabActive = k;
     },
-    onTabClosed(k, tabType, id) {
+    onTabClosed(k) {
       this.$delete(this.tabs, k);
       let keys = Object.keys(this.tabs);
-      this.tabActive = keys[keys.length - 1];
+      setTimeout(() => {
+        this.onTabSwitch(keys[keys.length - 1]);
+      })
       this.$nextTick(() => {
         if (Object.keys(this.tabs).length == 0 && this.toolbar.menu.indexOf("share") !== -1) {
           this.toolbar.menu.splice(1, 1);
@@ -245,7 +241,10 @@ export default {
         data: msg
       });
     },
-    renameComplete() {
+    renameComplete(item) {
+      let newItem = {};
+      Object.assign(newItem, item);
+      this.selected.item = newItem;
       this._refresh();
     },
     onAsideLoaded(percent) {

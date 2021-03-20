@@ -1,14 +1,15 @@
 <template>
   <div>
+    <LoadingBar v-if="loadingTask > 0" index="9999"/>
     <div class="search-box">
-      <el-input v-model="search.keywords" placeholder="搜索文档" @input="onKeywordsChange"></el-input>
+      <el-input v-model="search.keywords" placeholder="搜索" @input="onKeywordsChange"></el-input>
     </div>
     <TreeForm
       v-if="r"
       icon="el-icon-notebook-2"
       :folder="trees"
       :select="select"
-      :selected="selectedDoc"
+      :selected="selected.cursor"
     />
   </div>
 </template>
@@ -17,10 +18,11 @@
 import TreeForm from "@/components/TreeForm";
 import DocAPI from '../biz/DocAPI';
 import { abs } from '../util/digest';
+import LoadingBar from "./LoadingBar";
 
 export default {
   components: {
-    TreeForm,
+    TreeForm, LoadingBar
   },
   created () {
 
@@ -30,48 +32,57 @@ export default {
       r: true,
       trees: { 
         children: { 
-          result: {
-            label: "搜索结果",
+          docs: {
+            label: "文档",
             show: true,
             children: {} 
-          } 
+          },
+          chats: {
+            label: "聊天",
+            show: true,
+            children: {}
+          }
         } 
       },
       search: {
         keywords: '',
         s: null
       },
-      selectedDoc: null
+      selected: {
+        cursor: null,
+        item: null,
+      },
+      loadingTask: 0,
     }
   },
   methods: {
-    _refreshTree() {
+    _refreshTree(cb) {
       this.r = false;
       this.$nextTick(() => {
         this.r = true;
+        cb();
       });
     },
     select(item) {
+      if (item.renaming) return;
       item.show = !item.show;
-      if (!item.children) {
-        this.$emit('resultSelected', folder, item);
-      }
-      this.selectedDoc = item;
-    },
-    optionCallback(op, folder, item) {
-      
+      this.selected.cursor = item;
+      if (item.children === undefined) this.selected.item = item;
+      this._refreshTree();
+      this.$emit("fileSelected", this.selected);
     },
     onKeywordsChange() {
       if (this.s) clearTimeout(this.s);
+      this.loadingTask = 1;
       this.s = setTimeout(() => {
         DocAPI.search(this.search.keywords).then((resp) => {
-          this.trees.children.result.children = {};
+          this.trees.children.docs.children = {};
           for (let doc of resp.data.data) {
-            this.trees.children.result.children[abs(doc.label + "-" + doc.id)] = doc;
+            this.trees.children.docs.children[abs(doc.label + "-" + doc.id)] = doc;
           }
-          this._refreshTree();
+          this.loadingTask = 0;
         })
-      }, 200)
+      });
     }
   },
 };

@@ -8,7 +8,10 @@ import VueClipboard from 'vue-clipboard2'
 import 'element-ui/lib/theme-chalk/index.css'
 import 'v-contextmenu/dist/index.css'
 import API from './biz/API'
+import Quill from 'quill'
+import UserBlock from './util/UserBlock'
 
+Quill.register(UserBlock)
 Vue.use(ElementUi)
 Vue.use(VueClipboard)
 Vue.config.productionTip = () => {};
