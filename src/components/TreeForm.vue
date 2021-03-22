@@ -23,7 +23,7 @@
               >
               <div class="fname">
                 <span v-show="!item.children" class="file-0 folder-state`"
-                  ><i :class="icon"
+                  ><i :class="item.icon ? item.icon : icon"
                 /></span>
                 <span v-show="!item.renaming" class="fn-box" :title="item.label">
                   {{ item.label }}
@@ -174,7 +174,7 @@ export default {
 .fn-box {
   display: inline-block;
   vertical-align: bottom;
-  max-width: 250px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

@@ -4,18 +4,19 @@
     v-loading="loading"
     element-loading-text="正在加载"
     element-loading-background="rgba(243, 243, 243, 1)">
+    <LoadingBar v-if="loadingTask > 0" index="9999"/>
     <div class="search-box">
       <el-input v-model="search.keywords" placeholder="搜索协作用户" @input="onSearchInput"></el-input>
     </div>
     <TreeForm
       icon="el-icon-user"
-      
+      v-if="r"
       :folder="trees"
       :select="select"
     >
       <template slot="after" slot-scope="scope">
         <span v-if="scope.data.item.id !== undefined">
-          <span v-show="getRoleOfItem(user) !== 2 && scope.data.item.id !== user.id" class="slot-after">
+          <span v-show="getRoleOfItem(scope.data.item) !== 2 && scope.data.item.id !== user.id" class="slot-after">
             <i
               v-show="getRoleOfItem(scope.data.item) !== 1"
               class="el-icon-edit-outline icon"
@@ -33,9 +34,9 @@
               @click="optionCallback('remove', scope.data.item)"/>
           </span>
           <span>
-            <span v-show="getRoleOfItem(scope.data.item) === 2">[创建者]</span>
+            <span v-show="getRoleOfItem(scope.data.item) === 2" class="noop">[创建者]</span>
             <span 
-              v-show="getRoleOfItem(scope.data.item) !== 2 && scope.data.item.id === user.id">[自己]</span>
+              v-show="getRoleOfItem(scope.data.item) !== 2 && scope.data.item.id === user.id" class="noop">[自己]</span>
           </span>
         </span>
       </template>
@@ -72,11 +73,13 @@ import AuthorAPI from "../biz/AuthorAPI";
 import DocAPI from "../biz/DocAPI";
 import { ChatClient } from '../client/ChatClient';
 import API from '../biz/API';
+import LoadingBar from "./LoadingBar";
 
 export default {
   props: ["doc"],
   components: {
     TreeForm,
+    LoadingBar,
   },
   created() {
     this.user = API.user;
@@ -94,7 +97,8 @@ export default {
       link: {
         read: "",
         coll: "",
-      }
+      },
+      loadingTask: 0,
     };
   },
   methods: {
@@ -105,9 +109,9 @@ export default {
         this.r = true;
       });
     },
-    init(doc) {
+    init(doc, cache=true, searchCache=null) {
       if (doc && doc.children === undefined) {
-        Tree.getShare(doc).then((data) => {
+        Tree.getShare(doc, cache, searchCache).then((data) => {
           this.trees = data;
           this._refreshTree();
           this.genInviteLink();
@@ -160,12 +164,15 @@ export default {
           })
         }
       }
+      this.loadingTask = 1;
       opsFn[op]().then(() => {
-        this.init(this.doc);
+        this.init(this.doc, false, this.trees.children.result.children);
+        this.loadingTask = 0;
       })
     },
     onSearchInput() {
       if (this.search.keywords) {
+        this.loadingTask = 1;
         AuthorAPI.queryAuthors(this.search.keywords).then((resp) => {
           this.trees.children.result.children = [];
           for (let author of resp.data.data) {
@@ -173,6 +180,7 @@ export default {
             author.search = true;
             this.trees.children.result.children.push(author);
           }
+          this.loadingTask = 0;
           this._refreshTree();
         })
       } else {
@@ -206,6 +214,7 @@ export default {
         if (accs.length === 0) return -1;
         return accs[0].role;
       }
+      return -1;
     }
   },
   watch: {
@@ -235,5 +244,8 @@ export default {
 }
 .icon:hover {
   color: #aaa;
+}
+.noop {
+  font-size: 10px;
 }
 </style>

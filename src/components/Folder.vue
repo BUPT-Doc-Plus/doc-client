@@ -439,6 +439,7 @@ export default {
         cancelButtonText: "取消",
         type: "warning",
       }).then(() => {
+        this.loadingTask = 1;
         if (item.id) {
           DocAPI.batchDelete([item.id]).then(() => {
             dfs.remove(item.path, () => {
@@ -446,18 +447,22 @@ export default {
                 type: "success",
                 message: "删除成功"
               });
+              this.loadingTask = 0;
             });
           }).catch(() => {
             this.$message({
               type: "error",
               message: "删除失败"
             })
+            this.loadingTask = 0;
           })
         } else {
-          dfs.remove(item.path);
-          this.$message({
-            type: "success",
-            message: "删除成功"
+          dfs.remove(item.path, () => {
+            this.loadingTask = 0;
+            this.$message({
+              type: "success",
+              message: "删除成功"
+            });
           });
         }
       });
@@ -513,12 +518,17 @@ export default {
           document.querySelector(".rn-input").querySelector("input").select();
         })
       } else {
+        this.loadingTask = 1;
         if (item.children === undefined) {
           DocAPI.rename(item, this.renaming.buffer).then((resp) => {
-            dfs.rename(item.path, this.renaming.buffer);
+            dfs.rename(item.path, this.renaming.buffer, () => {
+              this.loadingTask = 0;
+            });
           });
         } else {
-          dfs.rename(item.path, this.renaming.buffer);
+          dfs.rename(item.path, this.renaming.buffer, () => {
+            this.loadingTask = 0;
+          });
         }
         this.$emit("renameComplete", item);
         this.renaming.item = null;

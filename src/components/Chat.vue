@@ -8,6 +8,7 @@
           :class="'forward forward-' + (record.sender.id === sender.id ? 1 : 0)"
           v-for="(record, key) in p.records"
           :key="key"
+          :id="'message-' + record.id"
         >
           <!-- <i v-show="!record.forward" class="el-icon-user" /> -->
           <el-card :class="'card-' + ((record.sender.id === sender.id) ? 'send' : 'recv')">

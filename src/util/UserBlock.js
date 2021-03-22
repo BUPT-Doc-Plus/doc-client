@@ -1,17 +1,33 @@
 import Quill from "quill";
+const crypto = require("crypto");
+const Inline = Quill.import("blots/inline");
 
-const Block = Quill.import("blots/block");
-
-const colors = {};
-
-export default class UserBlock extends Block {
-    formatAt(index, length, name, value) {
-        if (name === "user") {
-            this.domNode.setAttribute("user", value);
+export default class UserBlock extends Inline {
+    static create(value) {
+        let domNode = super.create();
+        if (typeof value === "object") {
+            UserBlock.user = value;
+            domNode.setAttribute('title', `${UserBlock.user.nickname}<${UserBlock.user.email}>`);
+            domNode.setAttribute('style', `
+                display: inline;
+                font-weight: normal;
+                border-left: 2px solid ${UserBlock.getColorByUserId(UserBlock.user.id)};
+                padding: 3px 0px;
+                padding-left: 3px;`);
+            return domNode;
+        } else {
+            return domNode;
         }
-        super.formatAt(index, length, name, value);
     }
-    insertAt(index, value, def) {
-        super.insertAt(index, value, def);
+}
+
+UserBlock.blotName = "user";
+UserBlock.tagName = ["B"];
+UserBlock.getColorByUserId = function(userId) {
+    var md5 = crypto.createHash("md5");
+    for (let i = 0; i < UserBlock.user.id % 1024; ++i) {
+        userId = md5.update("" + userId);
     }
+    userId = userId.digest("hex");
+    return "#" + userId.slice(-6);
 }

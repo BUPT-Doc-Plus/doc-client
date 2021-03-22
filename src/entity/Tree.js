@@ -12,7 +12,7 @@ export default class Tree {
     }
   }
 
-  static getShare(doc, cache=true) {
+  static getShare(doc, cache=true, searchCache=null) {
     let cachePromise = new Promise((resolve) => {
       resolve(Tree.cache[doc.id]);
     });
@@ -37,7 +37,7 @@ export default class Tree {
             label: "搜索结果",
             show: true,
             nonContext: true,
-            children: []
+            children: searchCache ? searchCache : []
           },
           collaborate: {
             label: `协作者`,

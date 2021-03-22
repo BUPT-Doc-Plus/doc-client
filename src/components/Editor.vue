@@ -132,9 +132,31 @@ export default {
           var quill = this.$refs["editor-" + this.doc.id].quill;
           quill.setContents(this.dc.doc.data);
           this.monacoEditor.setValue(quill.getText());
-          quill.format("user", API.user.id);
+          quill.on("editor-change", () => {
+            if (quill.getFormat().user === undefined) {
+              quill.format("user", API.user);
+            }
+          })
           quill.on("text-change", (delta, oldDelta, source) => {
             if (source !== quill && source !== "user") return;
+            if (source === "user") {
+              delta.ops.forEach(op => {
+                if (op.insert || op.delete) {
+                  if (op.attributes === undefined) {
+                    op.attributes = {
+                      user: API.user,
+                      time: parseInt(Date.now()/60000)
+                    };
+                  } else if (op.attributes.userId === undefined && op.attributes.time === undefined) {
+                    op.attributes = {
+                      ...op.attributes,
+                      user: API.user,
+                      time: parseInt(Date.now()/60000)
+                    };
+                  }
+                }
+              });
+            }
             this.dc.doc.submitOp(delta, { source: quill });
           });
           this.dc.doc.on("op", (op, source) => {

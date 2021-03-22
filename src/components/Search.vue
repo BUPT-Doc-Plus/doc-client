@@ -19,6 +19,7 @@ import TreeForm from "@/components/TreeForm";
 import DocAPI from '../biz/DocAPI';
 import { abs } from '../util/digest';
 import LoadingBar from "./LoadingBar";
+import ChatAPI from '../biz/ChatAPI';
 
 export default {
   components: {
@@ -56,7 +57,7 @@ export default {
     }
   },
   methods: {
-    _refreshTree(cb) {
+    _refreshTree(cb = () => {}) {
       this.r = false;
       this.$nextTick(() => {
         this.r = true;
@@ -73,16 +74,29 @@ export default {
     },
     onKeywordsChange() {
       if (this.s) clearTimeout(this.s);
-      this.loadingTask = 1;
       this.s = setTimeout(() => {
+        this.loadingTask = 2;
         DocAPI.search(this.search.keywords).then((resp) => {
           this.trees.children.docs.children = {};
           for (let doc of resp.data.data) {
             this.trees.children.docs.children[abs(doc.label + "-" + doc.id)] = doc;
           }
-          this.loadingTask = 0;
+          --this.loadingTask;
+        }).catch(() => {
+          --this.loadingTask;
         })
-      });
+        ChatAPI.search(this.search.keywords).then((resp) => {
+          this.trees.children.chats.children = {};
+          for (let msg of resp.data.data) {
+            msg.icon = "el-icon-chat-line-square"
+            msg.label = `${msg.sender.nickname}=>${msg.receiver.nickname}: ${msg.msg.replace(/\<.*?\>/g, '')}`;
+            this.trees.children.chats.children[abs(msg.msg)] = msg;
+          }
+          --this.loadingTask;
+        }).catch(() => {
+          --this.loadingTask;
+        })
+      }, 200);
     }
   },
 };
