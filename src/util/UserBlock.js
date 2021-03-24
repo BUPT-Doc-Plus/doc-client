@@ -7,10 +7,9 @@ export default class UserBlock extends Inline {
         let domNode = super.create();
         if (typeof value === "object") {
             UserBlock.user = value;
-            domNode.setAttribute('title', `${UserBlock.user.nickname}<${UserBlock.user.email}>`);
+            domNode.setAttribute('title', `本段作者: ${UserBlock.user.nickname}<${UserBlock.user.email}>`);
             domNode.setAttribute('style', `
                 display: inline;
-                font-weight: normal;
                 border-left: 2px solid ${UserBlock.getColorByUserId(UserBlock.user.id)};
                 padding: 3px 0px;
                 padding-left: 3px;`);
@@ -22,7 +21,7 @@ export default class UserBlock extends Inline {
 }
 
 UserBlock.blotName = "user";
-UserBlock.tagName = ["B"];
+UserBlock.tagName = ["T"];
 UserBlock.getColorByUserId = function(userId) {
     var md5 = crypto.createHash("md5");
     for (let i = 0; i < UserBlock.user.id % 1024; ++i) {

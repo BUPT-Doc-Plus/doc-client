@@ -2,7 +2,29 @@
   <div
     class="full"
     v-loading="loadingEditor"
-    element-loading-background="rgba(255, 255, 255, 1)"> 
+    element-loading-background="rgba(255, 255, 255, 1)">
+    <div class="float-btn" title="查看历史记录" @click="history.showDrawer = true">
+      <i class="el-icon-time"/>
+    </div>
+    <el-drawer
+      :title='`"${doc.label}"的历史记录`'
+      :visible.sync="history.showDrawer"
+      :with-header="true">
+      <el-timeline>
+        <el-timeline-item
+          v-for="(op, idx) in history.records"
+          :key="idx"
+          :color="idx < (history.records.length - history.stepBack) ? '#44CC00' : '#E4E7ED'"
+          :class="idx < (history.records.length - history.stepBack - 1) ? 'timeline-enabled' : 'timeline-disabled'"
+          :timestamp="new Date(op.attributes.time * 60000).toLocaleString().slice(0, -3)">
+          <el-button
+            class="ckpt"
+            :title="op.attributes.user.email"
+            type="text"
+            @click="loadCkpt(idx)">作者: {{ op.attributes.user.nickname }}</el-button>
+        </el-timeline-item>
+      </el-timeline>
+    </el-drawer>
     <div
       id="editor-box"
       class="full"
@@ -99,6 +121,11 @@ export default {
       monacoEditor: null,
       loadingEditor: false,
       monacoLanguage: "markdown",
+      history: {
+        stepBack: 0,
+        showDrawer: false,
+        records: []
+      }
     };
   },
   methods: {
@@ -131,8 +158,14 @@ export default {
           if (err) throw err;
           var quill = this.$refs["editor-" + this.doc.id].quill;
           quill.setContents(this.dc.doc.data);
+          this.history.records = this.dc.doc.data.ops.slice(0, -1);
           this.monacoEditor.setValue(quill.getText());
-          quill.on("editor-change", () => {
+          quill.on("editor-change", (eventName, ...args) => {
+            this.history.records = this.dc.doc.data.ops.slice(0, -1);
+            if (eventName === "selection-change") {
+              if (args[0] === null) return;
+              console.log(quill.enabled);
+            }
             if (quill.getFormat().user === undefined) {
               quill.format("user", API.user);
             }
@@ -140,8 +173,13 @@ export default {
           quill.on("text-change", (delta, oldDelta, source) => {
             if (source !== quill && source !== "user") return;
             if (source === "user") {
+              let cur = 0;
               delta.ops.forEach(op => {
+                let d = op.insert && op.insert.length || -op.delete || op.retain;
                 if (op.insert || op.delete) {
+                  if (op.insert) {
+                    quill.formatText(cur, d, "user", API.user);
+                  }
                   if (op.attributes === undefined) {
                     op.attributes = {
                       user: API.user,
@@ -155,6 +193,7 @@ export default {
                     };
                   }
                 }
+                cur += d;
               });
             }
             this.dc.doc.submitOp(delta, { source: quill });
@@ -210,6 +249,17 @@ export default {
       if (s.endsWith("\n")) return s.slice(0, -1);
       return s;
     },
+    loadCkpt(idx) {
+      this.history.stepBack = this.history.records.length - idx - 1;
+      var quill = this.$refs["editor-" + this.doc.id].quill;
+      if (this.history.stepBack === 0) {
+        quill.enable();
+      } else {
+        quill.disable();
+      }
+      let ops = this.history.records.slice(0, idx + 1);
+      quill.setContents({ ops });
+    }
   },
 };
 </script>
@@ -224,5 +274,32 @@ export default {
 #editor-box .ql-editor {
     height: 600px;
     overflow-y: scroll;
+}
+.float-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  font-size: 30px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  transition: all 200ms;
+}
+.float-btn:hover {
+  background: rgba(0, 0, 0, .1);
+}
+.timeline-enabled .el-timeline-item__tail {
+  border-left: 2px solid #44CC00;
+}
+.timeline-disabled .el-timeline-item__tail {
+  border-left: 2px solid #E4E7ED;
+}
+.ckpt {
+  padding: 0;
+  margin: 0;
 }
 </style>
