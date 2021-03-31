@@ -8,7 +8,7 @@
         @mouseleave="unreadyToDrop ? unreadyToDrop(item) : () => {}"
       >
         <span
-          v-if="!(item.recycled ^ recycled)"
+          v-if="idx !== '-recycled-'"
           :class="'item' + (item.cut ? ' item-cut' : '')"
           :data="{ item }"
           @click="select(item)"

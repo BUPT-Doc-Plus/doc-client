@@ -66,7 +66,7 @@
         v-if="r"
         icon="el-icon-notebook-2"
         :path="['children']"
-        :folder="trees"
+        :folder="recycled ? recycleTrees : trees"
         :select="select"
         :selected="selected.cursor"
         :blurRename="blur"
@@ -168,6 +168,7 @@ export default {
         x: 0,
         y: 0,
       },
+      recycleTrees: { children: {} },
       trees: { children: {} },
       loadingFileTree: true,
       loadingTask: 0,
@@ -181,10 +182,12 @@ export default {
         API.user.id,
         () => {
           this.trees = dfs.doc.data.root;
+          this.recycleTrees = this.trees.children["-recycled-"] || { children: {} };
           this.selected.cursor = dfs.doc.data.root;
         },
         (op, source) => {
           this.trees = dfs.doc.data.root;
+          this.recycleTrees = this.trees.children["-recycled-"] || { children: {} };
           this.$emit("loaded", dfs.doc.data.loaded);
           if (dfs.doc.data.loaded === true) {
             this._refreshTree();

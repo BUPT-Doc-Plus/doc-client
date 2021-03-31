@@ -27,7 +27,9 @@ class Path {
   }
 
   _trimPath(path) {
-    return path.trim(" ").split("").reduce((a, b) => (a.slice(-1) === "/" && b === "/") ? a : (a + b));
+    let list = path.trim(" ").split("");
+    if (list.length === 0) return path;
+    return list.reduce((a, b) => (a.slice(-1) === "/" && b === "/") ? a : (a + b));
   }
 
   get path() {

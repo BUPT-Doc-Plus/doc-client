@@ -100,12 +100,17 @@ class DocFileSystem {
     return true;
   }
 
-  mkdir(path, cb=()=>{}) {
+  mkdir(path, cb=()=>{}, noAbs=false) {
     if (path.endsWith("/")) path = path.slice(0, -1);
-    if (this.get(path) !== undefined) return false;
+    if (this.get(path) !== undefined) {
+      cb(path);
+      return false;
+    }
     let p = new Path(path);
     let label = p.target;
-    p.target = abs(p.target + "-" + Date.now());
+    if (!noAbs) {
+      p.target = abs(p.target + "-" + Date.now());
+    }
     if (this.get(p.parent.path) === undefined) {
       this.mkdir(p.parent.path);
     }
@@ -126,6 +131,8 @@ class DocFileSystem {
       ], null, () => {
         cb(p.path);
       });
+    } else {
+      cb(p.path);
     }
     return true;
   }
@@ -136,42 +143,36 @@ class DocFileSystem {
     let isDir = path.endsWith("/");
     if (isDir) path = path.slice(0, -1);
     let p = new Path(path);
-    let ops = [
-      {
-        p: ["root", ...p.jpath, "recycled"],
-        oi: true
-      },
-      {
-        p: ["root", ...p.jpath, "selected"],
-        oi: false
-      }
-    ];
-    this.doc.submitOp(ops, null, () => {
-      cb(p.path);
-    });
+    this.mkdir("/-recycled-/", () => {
+      this.move(p.path, "/-recycled-/", () => {
+        let sp = new Path(`/-recycled-/${p.target}`);
+        let ops = [
+          {
+            p: ["root", ...sp.jpath, "original"],
+            oi: p.path
+          }
+        ];
+        this.doc.submitOp(ops, null, () => {
+          cb(p.path);
+        });
+      });
+    }, true);
     return true;
   }
 
   restore(path, cb=()=>{}) {
-    if (this.get(path) === undefined)
-      return false;
     let isDir = path.endsWith("/");
     if (isDir) path = path.slice(0, -1);
     let p = new Path(path);
-    let ops = [
-      {
-        p: ["root", ...p.jpath, "recycled"],
-        oi: false
-      },
-      {
-        p: ["root", ...p.jpath, "selected"],
-        oi: false
-      }
-    ];
-    this.doc.submitOp(ops, null, () => {
-      cb(p.path);
-    });
-    return true;
+    let target = this.get(p.path);
+    let original = target.original;
+    let po = new Path(original);
+    this.mkdir(po.parent.path, () => {
+      console.log(p.path, po.parent.path);
+      this.move(p.path, po.parent.path, () => {
+        cb(po.path);
+      })
+    }, true)
   }
 
   remove(path, cb=()=>{}) {
