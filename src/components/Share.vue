@@ -187,17 +187,28 @@ export default {
         this.trees.children.result.children = [];
       }
     },
-    genInviteLink() {
+    genInviteLink(cache=true) {
       if (this.doc !== undefined) {
-        DocAPI.genInviteLink(this.doc.id, "read").then((resp) => {
-          this.link.read = resp.data.data;
-          if (this.doc !== undefined) {
-            DocAPI.genInviteLink(this.doc.id, "collaborate").then((resp) => {
-              this.link.coll = resp.data.data;
-              this.loading = false;
-            })
-          }
-        });
+        let targetId = this.doc.id;
+        if (!cache || Tree.linkCache[targetId] === undefined) {
+          DocAPI.genInviteLink(this.doc.id, "read").then((resp) => {
+            this.link.read = resp.data.data;
+            if (this.doc !== undefined) {
+              DocAPI.genInviteLink(this.doc.id, "collaborate").then((resp1) => {
+                this.link.coll = resp1.data.data;
+                this.loading = false;
+                Tree.linkCache[targetId] = {
+                  read: resp.data.data,
+                  coll: resp1.data.data
+                }
+              })
+            }
+          });
+        } else {
+          this.link.read = Tree.linkCache[targetId].read;
+          this.link.coll = Tree.linkCache[targetId].coll;
+          this.loading = false;
+        }
       }
     },
     copyLink(link) {

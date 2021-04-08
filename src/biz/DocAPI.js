@@ -48,4 +48,7 @@ export default class DocAPI extends API {
             ids: docIds
         })
     }
+    static getFullText(docId) {
+        return axios.post(`http://${config.midHost}/full-text?doc_id=${docId}`);
+    }
 }

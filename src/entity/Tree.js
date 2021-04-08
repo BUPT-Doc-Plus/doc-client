@@ -64,3 +64,4 @@ export default class Tree {
   }
 }
 Tree.cache = {};
+Tree.linkCache = {};

@@ -1,6 +1,7 @@
 <template>
   <el-container class="root">
       <el-header
+        v-if="r"
         class="tab-container"
         style="display: flex;
                width: 100%;
@@ -47,6 +48,7 @@
 import Editor from "@/components/Editor";
 import Chat from "@/components/Chat";
 import API from '../biz/API';
+import { UniLMClient } from "../client/UniLMClient";
 
 export default {
   props: ["tabs", "active"],
@@ -59,6 +61,19 @@ export default {
   },
   created() {
     this.user = API.user;
+    UniLMClient.connect();
+    UniLMClient.addHandler((data) => {
+      setTimeout(() => {
+        let tabs = this.tabs;
+        for (let key in tabs) {
+          if (key === data.doc_id) {
+            tabs[key].data.label = data.title;
+          }
+        }
+        this.$set(this, "tabs", tabs);
+        this._refresh();
+      });
+    })
   },
   methods: {
     _refresh() {

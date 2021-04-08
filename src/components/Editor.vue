@@ -3,8 +3,12 @@
     class="full"
     v-loading="loadingEditor"
     element-loading-background="rgba(255, 255, 255, 1)">
-    <div class="float-btn" title="查看历史记录" @click="history.showDrawer = true">
+    <div v-if="doc.type === 'rich'" class="float-btn float-btn-r" title="查看历史记录" @click="history.showDrawer = true">
       <i class="el-icon-time"/>
+    </div>
+    <div v-if="doc.type === 'rich' && getRole() === 2" class="float-btn float-btn-l">
+      <el-switch v-model="titleGen" active-color="#13ce66" @change="onTitleGenChange" :disabled="this.summLock"></el-switch>
+      <span style="font-size: 15px; font-weight: bold; padding: 5px;">自动生成标题{{this.summLock ? "(标题生成中...)" : ""}}</span>
     </div>
     <el-drawer
       :title='`"${doc.label}"的历史记录`'
@@ -79,6 +83,8 @@ import "quill/dist/quill.bubble.css";
 import API from "../biz/API";
 const Diff = require("diff");
 import { diff2Ops, cursorOffset } from "../util/diff2ops";
+import { UniLMClient } from "../client/UniLMClient";
+import DocAPI from '../biz/DocAPI';
 
 export default {
   props: ["doc", "type", "suppress"],
@@ -125,12 +131,22 @@ export default {
         stepBack: 0,
         showDrawer: false,
         records: []
-      }
+      },
+      summTask: null,
+      summLock: false,
+      titleGen: false,
+      access: "w",
+      API: API
     };
   },
   methods: {
     init() {
+      UniLMClient.connect();
+      UniLMClient.addHandler((data) => {
+        this.summLock = false;
+      })
       this.dc.connect(this.doc.id, API.user.id, (access) => {
+        this.access = access;
         if (access === "r") {
           this.monacoEditor.updateOptions({ readOnly: true });
           if (this.$refs["editor-" + this.doc.id].quill.disable)
@@ -173,13 +189,20 @@ export default {
           quill.on("text-change", (delta, oldDelta, source) => {
             if (source !== quill && source !== "user") return;
             if (source === "user") {
+              if (!this.summLock && this.titleGen) {
+                clearTimeout(this.summTask);
+                this.summTask = setTimeout(() => {
+                  this.summLock = true;
+                  UniLMClient.send({doc_id: this.doc.id, text: quill.getText()});
+                }, 1000)
+              }
               let cur = 0;
               delta.ops.forEach(op => {
                 let d = op.insert && op.insert.length || -op.delete || op.retain;
                 if (op.insert || op.delete) {
-                  if (op.insert) {
-                    quill.formatText(cur, d, "user", API.user);
-                  }
+                  // if (op.insert) {
+                  //   quill.formatText(cur, d, "user", API.user);
+                  // }
                   if (op.attributes === undefined) {
                     op.attributes = {
                       user: API.user,
@@ -252,13 +275,28 @@ export default {
     loadCkpt(idx) {
       this.history.stepBack = this.history.records.length - idx - 1;
       var quill = this.$refs["editor-" + this.doc.id].quill;
-      if (this.history.stepBack === 0) {
+      if (this.history.stepBack === 0 && this.access === "w") {
         quill.enable();
       } else {
         quill.disable();
       }
       let ops = this.history.records.slice(0, idx + 1);
       quill.setContents({ ops });
+    },
+    onTitleGenChange() {
+      var quill = this.$refs["editor-" + this.doc.id].quill;
+      if (this.titleGen && !this.summLock) {
+        clearTimeout(this.summTask);
+        this.summTask = setTimeout(() => {
+          this.summLock = true;
+          UniLMClient.send({doc_id: this.doc.id, text: quill.getText()});
+        }, 1000)
+      }
+    },
+    getRole() {
+      return this.doc.doc_accessible
+        .filter(e => e.author.id == API.user.id)[0].author.author_accessible
+        .filter(e => e.doc_id == this.doc.id)[0].role;
     }
   },
 };
@@ -281,15 +319,20 @@ export default {
   justify-content: center;
   border-radius: 10px;
   position: absolute;
-  right: 20px;
   bottom: 20px;
   font-size: 30px;
-  width: 40px;
-  height: 40px;
   background: none;
   transition: all 200ms;
 }
-.float-btn:hover {
+.float-btn-l {
+  padding-left: 20px;
+}
+.float-btn-r {
+  right: 20px;
+  width: 40px;
+  height: 40px;
+}
+.float-btn-r:hover {
   background: rgba(0, 0, 0, .1);
 }
 .timeline-enabled .el-timeline-item__tail {

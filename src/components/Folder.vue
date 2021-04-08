@@ -133,15 +133,29 @@ import { Path } from "../file/Path";
 import DocAPI from "../biz/DocAPI";
 import API from "../biz/API";
 import LoadingBar from "./LoadingBar";
+import { UniLMClient } from "../client/UniLMClient";
 
 export default {
   props: ["recycled"],
   components: { TreeForm, LoadingBar },
   created() {
     this.connectToDFS();
+    if (this.$route.name === "Invite") {
+      let s = setInterval(() => {
+        let { docId } = this.$route.params;
+        let path = dfs.doc.data.idPath[docId];
+        if (path !== undefined) {
+          this.select(dfs.get(path));
+          clearInterval(s);
+        }
+      })
+    }
   },
   data() {
     return {
+      once: {
+        selectedDocByRoute: false,
+      },
       showAlongTimeout: null,
       itemToShowTimeout: null,
       r: true,
@@ -192,6 +206,7 @@ export default {
           if (dfs.doc.data.loaded === true) {
             this._refreshTree();
             this.loadingFileTree = false;
+            this.connectToNLP();
             this.$emit("loaded", true);
           }
           if (this.selected.item && dfs.doc.data.idPath[this.selected.item.id] === undefined) {
@@ -202,6 +217,21 @@ export default {
           this.loadingFileTree = true;
         }
       );
+    },
+    connectToNLP() {
+      UniLMClient.connect();
+      UniLMClient.addHandler((data) => {
+        let { doc_id, title } = data;
+        let path = dfs.doc.data.idPath[doc_id];
+        let item = dfs.get(path);
+        this.select(item);
+        DocAPI.rename(item, title).then((resp) => {
+          dfs.rename(path, title, () => {
+            this.$emit("renameComplete", item);
+            this._refreshTree();
+          });
+        });
+      });
     },
     _refreshTree() {
       this.r = false;
@@ -536,6 +566,7 @@ export default {
         this.$emit("renameComplete", item);
         this.renaming.item = null;
         item.renaming = false;
+        this.select(item);
         this._refreshTree();
       }
     },
