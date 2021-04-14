@@ -111,11 +111,11 @@ export default {
       this.$router.push({ path: "/login/" });
       return;
     }
-    this.userInfo.name = API.user.nickname;
-    this.loadedFlags.reveal = true;
     if (!API.user) {
       this.$router.push({ path: "/login/" });
     }
+    this.userInfo.name = API.user.nickname;
+    this.loadedFlags.reveal = true;
     let width = localStorage.getItem("asideWidth");
     if (width !== null) this.aside.width = parseInt(width);
     if (this.$route.name === "Invite") {

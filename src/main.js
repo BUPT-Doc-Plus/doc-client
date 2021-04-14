@@ -19,7 +19,12 @@ Vue.config.productionTip = () => {};
 /* eslint-disable no-new */
 (async () => {
 
-  await API.currentUser();
+  try {
+    await API.currentUser();
+  } catch (e) {
+    localStorage.clear();
+    console.error(e);
+  }
   new Vue({
     el: '#app',
     router,

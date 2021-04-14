@@ -372,6 +372,7 @@ export default {
       } else {
         this.multiselect.splice(this.multiselect.indexOf(item), 1);
       }
+      this._refreshTree();
     },
     batchRecycle() {
       this.$confirm("确认移至回收站?", {
@@ -381,8 +382,8 @@ export default {
       }).then(() => {
         this.loadingTask += this.multiselect.length;
         this.multiselect.forEach(item => {
+          delete item.selected;
           dfs.recycle(item.path, () => {
-            item.selected = false;
             if (--this.loadingTask === 0) {
               this.multiselect = [];
               this.$message({
@@ -418,8 +419,8 @@ export default {
       }).then(() => {
         this.loadingTask += this.multiselect.length;
         this.multiselect.forEach(item => {
+          delete item.selected;
           dfs.restore(item.path, () => {
-            item.selected = false;
             if (--this.loadingTask === 0) {
               this.multiselect = [];
               this.$message({
@@ -452,8 +453,8 @@ export default {
           this.multiselect.filter(e => e.id !== undefined).map(e => e.id))
         .then(() => {
           this.multiselect.forEach(item => {
+            delete item.selected;
             dfs.remove(item.path, () => {
-              item.selected = false;
               if (--this.loadingTask === 0) {
                 this.multiselect = [];
                 this.$message({
@@ -503,7 +504,7 @@ export default {
     batchCopy() {
       this.clipboard.items = [...this.multiselect];
       for (let item of this.multiselect) {
-        item.selected = false;
+        delete item.selected;
       }
       this.multiselect.splice(0, this.multiselect.length);
       this.$message({
@@ -516,7 +517,7 @@ export default {
       this.clipboard.items = [...this.multiselect];
       for (let item of this.multiselect) {
         item.cut = true;
-        item.selected = false;
+        delete item.selected;
       }
       this.multiselect.splice(0, this.multiselect.length);
       this.$message({
